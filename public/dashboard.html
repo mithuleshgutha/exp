@@ -309,15 +309,18 @@
                 `<div class="text-center text-muted py-4">No outstanding balances.</div>`;
         } else {
             document.getElementById("balModalBody").innerHTML = customers.map(c => `
-                <div class="bal-row">
-                    <div>
+                <a href="/ledger.html?id=${c.id}" class="bal-row text-decoration-none" style="color:inherit;display:flex">
+                    <div style="flex:1">
                         <div class="bal-name">${c.name}</div>
                         <div class="bal-uid">${c.customer_uid || ""}</div>
                     </div>
-                    <div class="bal-amt ${isReceivable ? "text-danger" : "text-primary"}">
-                        ${fmt(Math.abs(parseFloat(c.current_balance)))}
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="bal-amt ${isReceivable ? "text-danger" : "text-primary"}">
+                            ${fmt(Math.abs(parseFloat(c.current_balance)))}
+                        </div>
+                        <i class="bi bi-chevron-right text-muted" style="font-size:12px"></i>
                     </div>
-                </div>
+                </a>
             `).join("");
         }
         balModal.show();
