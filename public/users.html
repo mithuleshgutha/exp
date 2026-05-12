@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users – OpTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Header -->
+<div class="app-header d-flex align-items-center justify-content-between px-3 py-2">
+    <div>
+        <div class="fw-bold" style="font-size:17px">Users</div>
+        <div class="text-muted" style="font-size:12px" id="userLabel"></div>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-primary" onclick="openAdd()">
+            <i class="bi bi-person-plus-fill me-1"></i>New User
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="logout()">
+            <i class="bi bi-box-arrow-right"></i>
+        </button>
+    </div>
+</div>
+
+<div class="page-content">
+    <div id="userList"></div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+    <a href="/transactions.html">
+        <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/customers.html">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="/stock.html">
+        <i class="bi bi-boxes"></i><span>Stock</span>
+    </a>
+    <a href="/users.html" class="active" id="navUsers">
+        <i class="bi bi-shield-lock"></i><span>Users</span>
+    </a>
+</nav>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">New User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Full Name <span class="text-danger">*</span></label>
+                    <input type="text" id="uName" class="form-control" placeholder="e.g. Ravi Kumar">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Username <span class="text-danger">*</span></label>
+                    <input type="text" id="uUsername" class="form-control" placeholder="e.g. ravi" autocomplete="off">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Password <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <input type="password" id="uPassword" class="form-control" placeholder="Min 6 characters" autocomplete="new-password">
+                        <button class="btn btn-outline-secondary" type="button" onclick="togglePwd()">
+                            <i class="bi bi-eye" id="pwdEye"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Role</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="cat-btn active" id="roleUser" onclick="setRole('user')">
+                            <i class="bi bi-person me-1"></i>User
+                        </button>
+                        <button type="button" class="cat-btn" id="roleAdmin" onclick="setRole('admin')">
+                            <i class="bi bi-shield-check me-1"></i>Admin
+                        </button>
+                    </div>
+                </div>
+                <div class="text-danger small" id="addErr"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createUser()">Create User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const token    = localStorage.getItem("token");
+    const myRole   = localStorage.getItem("userRole");
+    const myId     = null; // resolved from JWT if needed
+
+    if (!token) { location.href = "/login.html"; }
+    if (myRole !== "admin") { location.href = "/transactions.html"; }
+
+    document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+
+    function logout() { localStorage.clear(); location.href = "/login.html"; }
+
+    const addModal = new bootstrap.Modal(document.getElementById("addModal"));
+    let selectedRole = "user";
+
+    function setRole(r) {
+        selectedRole = r;
+        document.getElementById("roleUser").classList.toggle("active", r === "user");
+        document.getElementById("roleAdmin").classList.toggle("active", r === "admin");
+    }
+
+    function togglePwd() {
+        const f = document.getElementById("uPassword");
+        const i = document.getElementById("pwdEye");
+        if (f.type === "password") { f.type = "text"; i.className = "bi bi-eye-slash"; }
+        else { f.type = "password"; i.className = "bi bi-eye"; }
+    }
+
+    function openAdd() {
+        document.getElementById("uName").value = "";
+        document.getElementById("uUsername").value = "";
+        document.getElementById("uPassword").value = "";
+        document.getElementById("addErr").textContent = "";
+        setRole("user");
+        addModal.show();
+    }
+
+    async function createUser() {
+        const name     = document.getElementById("uName").value.trim();
+        const username = document.getElementById("uUsername").value.trim();
+        const password = document.getElementById("uPassword").value;
+        const errEl    = document.getElementById("addErr");
+        errEl.textContent = "";
+
+        if (!name || !username || !password) { errEl.textContent = "All fields required."; return; }
+        if (password.length < 6) { errEl.textContent = "Password min 6 characters."; return; }
+
+        try {
+            const res = await fetch("/api/users", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ name, username, password, role: selectedRole })
+            });
+            const data = await res.json();
+            if (!res.ok) { errEl.textContent = data.error; return; }
+            addModal.hide();
+            loadUsers();
+        } catch { errEl.textContent = "Error. Try again."; }
+    }
+
+    async function deleteUser(id, name) {
+        if (!confirm(`Delete user "${name}"? This cannot be undone.`)) return;
+        try {
+            const res = await fetch(`/api/users/${id}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (!res.ok) { alert(data.error); return; }
+            loadUsers();
+        } catch { alert("Error deleting user."); }
+    }
+
+    function renderUsers(users) {
+        const myUsername = localStorage.getItem("userUsername");
+        const el = document.getElementById("userList");
+        if (!users.length) {
+            el.innerHTML = `<div class="text-center text-muted py-5">No users found.</div>`;
+            return;
+        }
+        el.innerHTML = users.map(u => `
+            <div class="tx-card d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:40px;height:40px;border-radius:12px;background:${u.role==='admin'?'#8b5e3c':'#e9ecef'};display:flex;align-items:center;justify-content:center">
+                        <i class="bi ${u.role==='admin'?'bi-shield-check text-white':'bi-person text-secondary'}"></i>
+                    </div>
+                    <div>
+                        <div class="fw-semibold">${u.name}</div>
+                        <div class="text-muted" style="font-size:12px">@${u.username}
+                            <span class="badge ms-1 ${u.role==='admin'?'bg-warning text-dark':'bg-light text-secondary border'}">${u.role}</span>
+                        </div>
+                    </div>
+                </div>
+                ${u.username !== myUsername ? `
+                <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id}, '${u.name.replace(/'/g,"\\'")}')">
+                    <i class="bi bi-trash"></i>
+                </button>` : `<span class="text-muted small">You</span>`}
+            </div>
+        `).join("");
+    }
+
+    async function loadUsers() {
+        try {
+            const res = await fetch("/api/users", { headers: { Authorization: `Bearer ${token}` } });
+            if (!res.ok) { location.href = "/login.html"; return; }
+            renderUsers(await res.json());
+        } catch { document.getElementById("userList").innerHTML = `<div class="text-danger text-center py-4">Failed to load users.</div>`; }
+    }
+
+    loadUsers();
+</script>
+</body>
+</html>

@@ -10,6 +10,7 @@ const customerRoutes    = require("./routes/customers");
 const transactionRoutes = require("./routes/transactions");
 const stockRoutes       = require("./routes/stock");
 const productionRoutes  = require("./routes/production");
+const userRoutes        = require("./routes/users");
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/api/customers",    authMiddleware, customerRoutes);
 app.use("/api/transactions", authMiddleware, transactionRoutes);
 app.use("/api/stock",        authMiddleware, stockRoutes);
 app.use("/api/production",   authMiddleware, productionRoutes);
+app.use("/api/users",        authMiddleware, userRoutes);
 
 // Redirect root to login
 app.get("/", (_req, res) => res.redirect("/login.html"));

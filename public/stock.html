@@ -139,7 +139,11 @@
     <a href="/stock.html" class="active">
         <i class="bi bi-boxes"></i><span>Stock</span>
     </a>
+    <a href="/users.html" id="navUsers" style="display:none">
+        <i class="bi bi-shield-lock"></i><span>Users</span>
+    </a>
 </nav>
+<script>if (localStorage.getItem("userRole") === "admin") document.getElementById("navUsers").style.display = "";</script>
 
 <!-- ═══════════════ Add Production Modal ═══════════════ -->
 <div class="modal fade" id="prodModal" tabindex="-1">
