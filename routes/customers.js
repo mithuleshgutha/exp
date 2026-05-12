@@ -51,6 +51,29 @@ router.get("/", async (req, res) => {
     }
 });
 
+// GET BALANCE SUMMARY (receivable / payable, netted per customer)
+router.get("/balances", async (_req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, name, customer_uid, current_balance
+             FROM customers
+             WHERE current_balance != 0
+             ORDER BY ABS(current_balance) DESC`
+        );
+        const receivable = result.rows.filter(c => c.current_balance > 0);
+        const payable    = result.rows.filter(c => c.current_balance < 0);
+        res.json({
+            total_receivable: receivable.reduce((s, c) => s + parseFloat(c.current_balance), 0),
+            total_payable:    payable.reduce((s, c)    => s + Math.abs(parseFloat(c.current_balance)), 0),
+            receivable_customers: receivable,
+            payable_customers:    payable
+        });
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+
 // GET SINGLE CUSTOMER
 router.get("/:id", async (req, res) => {
     try {
