@@ -38,12 +38,18 @@ router.post("/", async (req, res) => {
     }
 });
 
-// GET ALL CUSTOMERS
-router.get("/", async (req, res) => {
+// GET ALL CUSTOMERS (with aggregated totals)
+router.get("/", async (_req, res) => {
     try {
-        const result = await pool.query(
-            "SELECT * FROM customers ORDER BY name ASC"
-        );
+        const result = await pool.query(`
+            SELECT c.*,
+                COALESCE(SUM(CASE WHEN t.transaction_type='SALE'     AND t.deleted_at IS NULL THEN t.total ELSE 0 END), 0) AS total_sale,
+                COALESCE(SUM(CASE WHEN t.transaction_type='PURCHASE' AND t.deleted_at IS NULL THEN t.total ELSE 0 END), 0) AS total_purchase
+            FROM customers c
+            LEFT JOIN transactions t ON t.customer_id = c.id
+            GROUP BY c.id
+            ORDER BY c.name ASC
+        `);
         res.json(result.rows);
     } catch (err) {
         console.log(err.message);

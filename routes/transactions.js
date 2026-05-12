@@ -156,7 +156,7 @@ router.post("/", async (req, res) => {
     try {
         const { customer_name, customer_id, transaction_type,
                 quantity, rate, paid_amount, notes, created_at: txDate,
-                item_type, meters, weight, bags, total: totalOverride } = req.body;
+                item_type, meters, weight, bags, total: totalOverride, account_id } = req.body;
 
         const isExpense = transaction_type === "EXPENSE";
         let custId = null;
@@ -178,16 +178,17 @@ router.post("/", async (req, res) => {
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
         const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
+        const acctId = account_id ? parseInt(account_id) : null;
         const result = await pool.query(
             `INSERT INTO transactions
              (customer_id, transaction_type, quantity, rate,
               total, paid_amount, pending_amount, notes, created_at,
-              item_type, meters, weight, bags)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::TIMESTAMP,NOW()),$10,$11,$12,$13)
+              item_type, meters, weight, bags, account_id)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::TIMESTAMP,NOW()),$10,$11,$12,$13,$14)
              RETURNING *`,
             [custId, transaction_type, qty, rt,
              total, paid, pending, notes || null, txDate || null,
-             item_type || null, mts, wt, bg]
+             item_type || null, mts, wt, bg, acctId]
         );
 
         if (!isExpense) await applyBalance(pool, transaction_type, custId, pending, paid, +1);
@@ -205,7 +206,7 @@ router.put("/:id", async (req, res) => {
         const txId = parseInt(req.params.id);
         const { customer_name, customer_id, transaction_type,
                 quantity, rate, paid_amount, notes, created_at: txDate,
-                item_type, meters, weight, bags, total: totalOverride } = req.body;
+                item_type, meters, weight, bags, total: totalOverride, account_id } = req.body;
 
         const cur = await pool.query(
             `SELECT t.*, c.name AS customer_name
@@ -248,6 +249,7 @@ router.put("/:id", async (req, res) => {
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
         const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
+        const acctId = account_id ? parseInt(account_id) : null;
         await pool.query(
             `UPDATE transactions SET
                 customer_id    = $1,  transaction_type = $2,
@@ -256,11 +258,12 @@ router.put("/:id", async (req, res) => {
                 pending_amount = $7,  notes            = $8,
                 created_at     = COALESCE($9::TIMESTAMP, created_at),
                 item_type      = $10, meters           = $11,
-                weight         = $12, bags             = $13
+                weight         = $12, bags             = $13,
+                account_id     = $15
              WHERE id = $14`,
             [newCustId, transaction_type,
              qty, rt, total, paid, pending, notes || null, txDate || null,
-             item_type || null, mts, wt, bg, txId]
+             item_type || null, mts, wt, bg, txId, acctId]
         );
 
         if (!isExpense) await applyBalance(pool, transaction_type, newCustId, pending, paid, +1);

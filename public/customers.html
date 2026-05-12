@@ -57,6 +57,9 @@
     <a href="/customers.html" class="active">
         <i class="bi bi-people"></i><span>Customers</span>
     </a>
+    <a href="/accounts.html">
+        <i class="bi bi-wallet2"></i><span>Accounts</span>
+    </a>
     <a href="/stock.html">
         <i class="bi bi-boxes"></i><span>Stock</span>
     </a>
@@ -152,6 +155,10 @@ function renderList(customers) {
         const balCls  = bal >= 0 ? "bal-positive" : "bal-negative";
         const balNote = bal >= 0 ? "To Receive" : "To Pay";
         const uid = c.customer_uid || ("CUS-" + String(c.id).padStart(4,"0"));
+        const sale = parseFloat(c.total_sale) || 0;
+        const purchase = parseFloat(c.total_purchase) || 0;
+        const net = sale - purchase;
+        const fmtK = n => n >= 1000 ? (n/1000).toFixed(1) + "k" : n.toFixed(0);
 
         el.innerHTML += `
         <div class="card p-3" style="cursor:pointer" onclick="location.href='/ledger.html?id=${c.id}'">
@@ -159,6 +166,9 @@ function renderList(customers) {
                 <div style="flex:1;min-width:0">
                     <div class="cust-id mb-1">${uid}</div>
                     <div class="fw-semibold text-truncate">${c.name}</div>
+                    <div style="font-size:11px;color:#aaa;margin-top:2px">
+                        Sale ₹${fmtK(sale)} · Purchase ₹${fmtK(purchase)} · Net <span style="color:${net>=0?'#1a7c2a':'#c0392b'}">${net<0?'-':''}₹${fmtK(Math.abs(net))}</span>
+                    </div>
                     ${c.phone ? `<small class="text-muted"><i class="bi bi-telephone me-1"></i>${c.phone}</small>` : ""}
                 </div>
                 <div class="text-end ms-3">

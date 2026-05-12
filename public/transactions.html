@@ -92,6 +92,9 @@
     <a href="/customers.html">
         <i class="bi bi-people"></i><span>Customers</span>
     </a>
+    <a href="/accounts.html">
+        <i class="bi bi-wallet2"></i><span>Accounts</span>
+    </a>
     <a href="/stock.html">
         <i class="bi bi-boxes"></i><span>Stock</span>
     </a>
@@ -153,6 +156,14 @@
                     <select id="payType" class="form-select" onchange="onPayTypeChange()">
                         <option value="PAYMENT_IN">Payment In (Customer paid you)</option>
                         <option value="PAYMENT_OUT">Payment Out (You paid customer)</option>
+                    </select>
+                </div>
+
+                <!-- Account (payment only) -->
+                <div class="mb-3" id="accountRow" style="display:none">
+                    <label class="form-label fw-semibold small">Account</label>
+                    <select id="accountId" class="form-select">
+                        <option value="">— Select account —</option>
                     </select>
                 </div>
 
@@ -364,6 +375,7 @@ function onCatChange(cat) {
     document.getElementById("custRow").style.display      = isExpense ? "none" : "";
     document.getElementById("saleTypeRow").style.display  = (cat === "dhana" || cat === "scrap") ? "" : "none";
     document.getElementById("payTypeRow").style.display   = isPayment ? "" : "none";
+    document.getElementById("accountRow").style.display   = isPayment ? "" : "none";
     document.getElementById("stockRow").style.display     = (isPayment || isExpense) ? "none" : "";
     document.getElementById("rateRow").style.display      = (isPayment || isExpense) ? "none" : "";
     document.getElementById("totalChip").style.display    = "none";
@@ -426,6 +438,7 @@ function clearModal() {
     document.getElementById("txDate").value        = new Date().toISOString().slice(0, 10);
     document.getElementById("salePurchase").value  = "SALE";
     document.getElementById("payType").value       = "PAYMENT_IN";
+    document.getElementById("accountId").value     = "";
     document.getElementById("calcMethod").value    = "weight";
     document.getElementById("custDropdown").style.display = "none";
     document.getElementById("newCustHint").style.display  = "none";
@@ -471,12 +484,13 @@ function openEdit(id) {
         document.getElementById("salePurchase").value = t.transaction_type;
     }
 
-    document.getElementById("qty").value    = parseFloat(t.quantity)    || "";
-    document.getElementById("meters").value = parseFloat(t.meters)      || "";
-    document.getElementById("weight").value = parseFloat(t.weight)      || "";
-    document.getElementById("bags").value   = parseFloat(t.bags)        || "";
-    document.getElementById("rate").value   = parseFloat(t.rate)        || "";
-    document.getElementById("paid").value   = parseFloat(t.paid_amount) || "";
+    document.getElementById("qty").value       = parseFloat(t.quantity)    || "";
+    document.getElementById("meters").value   = parseFloat(t.meters)      || "";
+    document.getElementById("weight").value   = parseFloat(t.weight)      || "";
+    document.getElementById("bags").value     = parseFloat(t.bags)        || "";
+    document.getElementById("rate").value     = parseFloat(t.rate)        || "";
+    document.getElementById("paid").value     = parseFloat(t.paid_amount) || "";
+    document.getElementById("accountId").value = t.account_id || "";
     document.getElementById("notes").value  = t.notes || "";
     document.getElementById("txDate").value = t.created_at
         ? new Date(t.created_at).toISOString().slice(0, 10) : "";
@@ -518,6 +532,7 @@ function buildBody() {
         rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
         total:            cat === "drip" ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
+        account_id:       isPayment ? (document.getElementById("accountId").value || null) : null,
         notes:            document.getElementById("notes").value,
         created_at:       document.getElementById("txDate").value || null
     };
@@ -787,6 +802,18 @@ function resetFilters() {
 /* ── Init ── */
 loadCustomers();
 fetchTx();
+loadAccounts();
+
+async function loadAccounts() {
+    try {
+        const r = await fetch("/api/accounts", { headers: authHeaders() });
+        if (!r.ok) return;
+        const accounts = await r.json();
+        const sel = document.getElementById("accountId");
+        sel.innerHTML = '<option value="">— Select account —</option>' +
+            accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+    } catch { /* non-critical */ }
+}
 </script>
 </body>
 </html>

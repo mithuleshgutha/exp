@@ -78,6 +78,22 @@ async function initDB() {
             ADD COLUMN IF NOT EXISTS username VARCHAR(100) UNIQUE
         `);
 
+        // Accounts table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS accounts (
+                id         SERIAL PRIMARY KEY,
+                name       VARCHAR(100) NOT NULL UNIQUE,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        const defaultAccounts = ['Cash','Company','Siva','Padma','Narayana swami','Vinod','Anji'];
+        for (const name of defaultAccounts) {
+            await pool.query(`INSERT INTO accounts (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [name]);
+        }
+
+        // account_id on transactions
+        await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
+
         // Stock tracking columns on transactions
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS item_type VARCHAR(20)`);
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS meters NUMERIC(14,2) DEFAULT 0`);
