@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customers – OpTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container" style="max-width:620px">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h4><i class="bi bi-people-fill me-2" style="color:#8b5e3c"></i>Customers</h4>
+        <div class="d-flex align-items-center gap-2">
+            <small class="text-muted" id="userLabel"></small>
+            <button class="btn btn-sm btn-outline-secondary" onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="input-group mb-3">
+        <span class="input-group-text" style="background:#f0ebe6;border-color:#dee2e6">
+            <i class="bi bi-search" style="color:#8b5e3c"></i>
+        </span>
+        <input type="text" id="searchInput" class="form-control" placeholder="Search by name, phone or ID…" oninput="filterList()">
+    </div>
+
+    <!-- List -->
+    <div id="spinner" class="text-center py-5 text-muted">
+        <div class="spinner-border" style="color:#8b5e3c"></div>
+    </div>
+    <div id="custList"></div>
+    <div id="emptyState" class="empty-state" style="display:none">
+        <i class="bi bi-people"></i>
+        <p>No customers yet</p>
+    </div>
+
+</div>
+
+<!-- FAB -->
+<button class="fab" data-bs-toggle="modal" data-bs-target="#addModal" title="Add Customer">+</button>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+    <a href="/transactions.html">
+        <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/customers.html" class="active">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="/stock.html">
+        <i class="bi bi-boxes"></i><span>Stock</span>
+    </a>
+</nav>
+
+<!-- Add Customer Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">Add Customer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Name <span class="text-danger">*</span></label>
+                    <input type="text" id="cName" class="form-control" placeholder="Full name">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Phone</label>
+                    <input type="tel" id="cPhone" class="form-control" placeholder="Mobile number">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Address</label>
+                    <textarea id="cAddress" class="form-control" rows="2" placeholder="Optional"></textarea>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label fw-semibold small">Opening Balance (₹)</label>
+                    <input type="number" id="cBalance" class="form-control" placeholder="0.00">
+                    <div class="form-text">Positive = customer owes you, Negative = you owe customer</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="addCustomer()">
+                    <i class="bi bi-person-plus-fill me-2"></i>Add Customer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ── Auth ── */
+const token = localStorage.getItem("token");
+if (!token) location.href = "/login.html";
+document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+
+function logout() { localStorage.clear(); location.href = "/login.html"; }
+
+const authHeaders = () => ({
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + token
+});
+
+/* ── Data ── */
+let allCustomers = [];
+
+async function fetchCustomers() {
+    document.getElementById("spinner").style.display    = "block";
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("custList").innerHTML       = "";
+
+    try {
+        const r = await fetch("/api/customers", { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+        allCustomers = await r.json();
+        document.getElementById("spinner").style.display = "none";
+        renderList(allCustomers);
+    } catch {
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("custList").innerHTML = `<div class="text-center text-danger py-3">Failed to load customers</div>`;
+    }
+}
+
+function renderList(customers) {
+    const el = document.getElementById("custList");
+    el.innerHTML = "";
+
+    if (!customers.length) {
+        document.getElementById("emptyState").style.display = "block";
+        return;
+    }
+    document.getElementById("emptyState").style.display = "none";
+
+    customers.forEach(c => {
+        const bal   = parseFloat(c.current_balance) || 0;
+        const absBal = Math.abs(bal).toLocaleString("en-IN", { minimumFractionDigits:2 });
+        const balCls  = bal >= 0 ? "bal-positive" : "bal-negative";
+        const balNote = bal >= 0 ? "To Receive" : "To Pay";
+        const uid = c.customer_uid || ("CUS-" + String(c.id).padStart(4,"0"));
+
+        el.innerHTML += `
+        <div class="card p-3" style="cursor:pointer" onclick="location.href='/ledger.html?id=${c.id}'">
+            <div class="d-flex justify-content-between align-items-start">
+                <div style="flex:1;min-width:0">
+                    <div class="cust-id mb-1">${uid}</div>
+                    <div class="fw-semibold text-truncate">${c.name}</div>
+                    ${c.phone ? `<small class="text-muted"><i class="bi bi-telephone me-1"></i>${c.phone}</small>` : ""}
+                </div>
+                <div class="text-end ms-3">
+                    <div class="${balCls} fs-6">₹${absBal}</div>
+                    <small class="text-muted">${balNote}</small>
+                    <div class="mt-1"><i class="bi bi-chevron-right text-muted"></i></div>
+                </div>
+            </div>
+        </div>`;
+    });
+}
+
+function filterList() {
+    const q = document.getElementById("searchInput").value.toLowerCase();
+    renderList(allCustomers.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        (c.phone && c.phone.includes(q)) ||
+        (c.customer_uid || "").toLowerCase().includes(q)
+    ));
+}
+
+/* ── Add Customer ── */
+async function addCustomer() {
+    const name = document.getElementById("cName").value.trim();
+    if (!name) { alert("Please enter a customer name."); return; }
+
+    try {
+        const r = await fetch("/api/customers", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+                name,
+                phone:           document.getElementById("cPhone").value.trim(),
+                address:         document.getElementById("cAddress").value.trim(),
+                opening_balance: parseFloat(document.getElementById("cBalance").value) || 0
+            })
+        });
+        if (!r.ok) throw new Error();
+
+        ["cName","cPhone","cAddress","cBalance"].forEach(id => document.getElementById(id).value = "");
+        bootstrap.Modal.getInstance(document.getElementById("addModal")).hide();
+        fetchCustomers();
+    } catch {
+        alert("Error adding customer. Please try again.");
+    }
+}
+
+fetchCustomers();
+</script>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock – OpTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container" style="max-width:620px">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h4><i class="bi bi-boxes me-2" style="color:#8b5e3c"></i>Stock</h4>
+        <div class="d-flex align-items-center gap-2">
+            <small class="text-muted" id="userLabel"></small>
+            <button class="btn btn-sm btn-outline-secondary" onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Stock levels -->
+    <div id="stockSpinner" class="text-center py-4 text-muted">
+        <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
+    </div>
+
+    <div id="stockContent" style="display:none">
+
+        <!-- Drip -->
+        <div class="card p-3 mb-3">
+            <div class="d-flex align-items-center mb-3">
+                <div class="stock-icon me-2" style="background:#d1f5d3">
+                    <i class="bi bi-droplet-fill" style="color:#1a7c2a"></i>
+                </div>
+                <div>
+                    <div class="fw-bold">Drip</div>
+                    <div class="text-muted" style="font-size:12px">Sale only · Stock tracked</div>
+                </div>
+            </div>
+            <div class="row text-center g-2">
+                <div class="col-4">
+                    <div class="stock-num" id="drip-qty">—</div>
+                    <div class="text-muted small">Quantity</div>
+                </div>
+                <div class="col-4">
+                    <div class="stock-num" id="drip-meters">—</div>
+                    <div class="text-muted small">Meters</div>
+                </div>
+                <div class="col-4">
+                    <div class="stock-num" id="drip-weight">—</div>
+                    <div class="text-muted small">Weight (kg)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dhana -->
+        <div class="card p-3 mb-3">
+            <div class="d-flex align-items-center mb-3">
+                <div class="stock-icon me-2" style="background:#fff3cd">
+                    <i class="bi bi-bag-fill" style="color:#8a5e00"></i>
+                </div>
+                <div>
+                    <div class="fw-bold">Dhana</div>
+                    <div class="text-muted" style="font-size:12px">Purchase & Sale · Stock tracked</div>
+                </div>
+            </div>
+            <div class="text-center py-2">
+                <div class="fw-bold mb-0" id="dhana-bags" style="font-size:52px;line-height:1;color:#1a1a1a">—</div>
+                <div class="text-muted small mt-1">Bags</div>
+            </div>
+        </div>
+
+        <!-- Scrap note -->
+        <div class="card p-3 mb-4" style="background:#f8f5f2;border:none;box-shadow:none">
+            <div class="d-flex align-items-center gap-2 text-muted">
+                <i class="bi bi-info-circle"></i>
+                <small>Scrap transactions tracked financially, not in stock.</small>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── Production Ledger ── -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2" style="color:#8b5e3c"></i>Production</h6>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#prodModal" onclick="openAddProd()">
+            <i class="bi bi-plus-lg me-1"></i>Add
+        </button>
+    </div>
+
+    <!-- Production filters -->
+    <div class="filter-panel mb-3">
+        <div class="row g-2 align-items-end">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Item</label>
+                <select id="fProdItem" class="form-select form-select-sm" onchange="loadProduction()">
+                    <option value="">All</option>
+                    <option value="drip">Drip</option>
+                    <option value="dhana">Dhana</option>
+                </select>
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">From</label>
+                <input type="date" id="fProdFrom" class="form-control form-control-sm" onchange="loadProduction()">
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">To</label>
+                <input type="date" id="fProdTo" class="form-control form-control-sm" onchange="loadProduction()">
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-outline-secondary btn-sm" onclick="resetProdFilters()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="prodSpinner" class="text-center py-3 text-muted" style="display:none">
+        <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
+    </div>
+    <div id="prodList"></div>
+    <div id="prodEmpty" class="empty-state" style="display:none">
+        <i class="bi bi-clipboard-x"></i>
+        <p>No production entries</p>
+    </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+    <a href="/transactions.html">
+        <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/customers.html">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="/stock.html" class="active">
+        <i class="bi bi-boxes"></i><span>Stock</span>
+    </a>
+</nav>
+
+<!-- ═══════════════ Add Production Modal ═══════════════ -->
+<div class="modal fade" id="prodModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="prodModalTitle">Add Production</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Item type -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Item <span class="text-danger">*</span></label>
+                    <div class="cat-group">
+                        <button type="button" class="cat-btn active" data-pcat="drip"  onclick="onProdCatChange('drip')">Drip</button>
+                        <button type="button" class="cat-btn"        data-pcat="dhana" onclick="onProdCatChange('dhana')">Dhana</button>
+                    </div>
+                </div>
+
+                <!-- Worker -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Worker Name</label>
+                    <input type="text" id="prodWorker" class="form-control" placeholder="Enter worker name">
+                </div>
+
+                <!-- Shift -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Shift <span class="text-danger">*</span></label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="cat-btn active flex-fill" data-shift="day"   onclick="onShiftChange('day')">
+                            <i class="bi bi-sun me-1"></i>Day (8am–8pm)
+                        </button>
+                        <button type="button" class="cat-btn flex-fill"        data-shift="night" onclick="onShiftChange('night')">
+                            <i class="bi bi-moon me-1"></i>Night (8pm–8am)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Date -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Date <span class="text-danger">*</span></label>
+                    <input type="date" id="prodDate" class="form-control">
+                </div>
+
+                <!-- Drip fields -->
+                <div id="prodDripFields">
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label fw-semibold small">Quantity</label>
+                            <input type="number" id="prodQty" class="form-control" placeholder="0" min="0">
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold small">Meters</label>
+                            <input type="number" id="prodMeters" class="form-control" placeholder="0.00" min="0">
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold small">Weight (kg)</label>
+                            <input type="number" id="prodWeight" class="form-control" placeholder="0.00" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dhana fields -->
+                <div id="prodDhanaFields" style="display:none">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Bags</label>
+                        <input type="number" id="prodBags" class="form-control" placeholder="0" min="0">
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-1">
+                    <label class="form-label fw-semibold small">Notes</label>
+                    <textarea id="prodNotes" class="form-control" rows="2" placeholder="Optional…"></textarea>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="saveProd()">
+                    <i class="bi bi-check-lg me-2"></i>Save Production
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="modal fade" id="deleteProdModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:340px">
+        <div class="modal-content text-center p-4">
+            <div style="font-size:44px">🗑️</div>
+            <h5 class="fw-bold mt-2">Delete Entry?</h5>
+            <p class="text-muted small">This will reverse the stock update for this production entry.</p>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger flex-grow-1" id="confirmProdDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const token = localStorage.getItem("token");
+if (!token) location.href = "/login.html";
+document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+function logout() { localStorage.clear(); location.href = "/login.html"; }
+const authHeaders = () => ({
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + token
+});
+
+/* ── Stock levels ── */
+async function loadStock() {
+    try {
+        const r = await fetch("/api/stock", { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+        const data = await r.json();
+
+        document.getElementById("stockSpinner").style.display = "none";
+        document.getElementById("stockContent").style.display = "";
+
+        data.forEach(s => {
+            if (s.item_type === "drip") {
+                document.getElementById("drip-qty").textContent    = parseFloat(s.quantity).toLocaleString("en-IN");
+                document.getElementById("drip-meters").textContent = parseFloat(s.meters).toLocaleString("en-IN");
+                document.getElementById("drip-weight").textContent = parseFloat(s.weight).toLocaleString("en-IN");
+            } else if (s.item_type === "dhana") {
+                document.getElementById("dhana-bags").textContent  = parseFloat(s.bags).toLocaleString("en-IN");
+            }
+        });
+    } catch {
+        document.getElementById("stockSpinner").style.display = "none";
+        document.getElementById("stockContent").innerHTML =
+            `<div class="text-center text-danger py-3">Failed to load stock data.</div>`;
+        document.getElementById("stockContent").style.display = "";
+    }
+}
+
+/* ── Production modal helpers ── */
+function getProdCat() {
+    return document.querySelector("[data-pcat].active")?.dataset.pcat || "drip";
+}
+function getShift() {
+    return document.querySelector("[data-shift].active")?.dataset.shift || "day";
+}
+
+function onProdCatChange(cat) {
+    document.querySelectorAll("[data-pcat]").forEach(b =>
+        b.classList.toggle("active", b.dataset.pcat === cat)
+    );
+    document.getElementById("prodDripFields").style.display  = cat === "drip"  ? "" : "none";
+    document.getElementById("prodDhanaFields").style.display = cat === "dhana" ? "" : "none";
+}
+
+function onShiftChange(shift) {
+    document.querySelectorAll("[data-shift]").forEach(b =>
+        b.classList.toggle("active", b.dataset.shift === shift)
+    );
+}
+
+function openAddProd() {
+    ["prodWorker","prodQty","prodMeters","prodWeight","prodBags","prodNotes"]
+        .forEach(id => document.getElementById(id).value = "");
+    document.getElementById("prodDate").value = new Date().toISOString().slice(0, 10);
+    onProdCatChange("drip");
+    onShiftChange("day");
+}
+
+async function saveProd() {
+    const cat = getProdCat();
+    const body = {
+        item_type: cat,
+        worker:    document.getElementById("prodWorker").value.trim() || null,
+        shift:     getShift(),
+        date:      document.getElementById("prodDate").value || null,
+        quantity:  cat === "drip"  ? (parseFloat(document.getElementById("prodQty").value)    || 0) : 0,
+        meters:    cat === "drip"  ? (parseFloat(document.getElementById("prodMeters").value) || 0) : 0,
+        weight:    cat === "drip"  ? (parseFloat(document.getElementById("prodWeight").value) || 0) : 0,
+        bags:      cat === "dhana" ? (parseFloat(document.getElementById("prodBags").value)   || 0) : 0,
+        notes:     document.getElementById("prodNotes").value || null
+    };
+
+    try {
+        const r = await fetch("/api/production", {
+            method: "POST", headers: authHeaders(), body: JSON.stringify(body)
+        });
+        if (!r.ok) throw new Error();
+        bootstrap.Modal.getInstance(document.getElementById("prodModal")).hide();
+        loadStock();
+        loadProduction();
+    } catch { alert("Error saving production entry."); }
+}
+
+function confirmDeleteProd(id) {
+    document.getElementById("confirmProdDeleteBtn").onclick = async () => {
+        try {
+            const r = await fetch(`/api/production/${id}`, {
+                method: "DELETE", headers: authHeaders()
+            });
+            if (!r.ok) throw new Error();
+            bootstrap.Modal.getInstance(document.getElementById("deleteProdModal")).hide();
+            loadStock();
+            loadProduction();
+        } catch { alert("Error deleting production entry."); }
+    };
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteProdModal")).show();
+}
+
+/* ── Render production entry ── */
+const SHIFT_CFG = {
+    day:   { label: "Day",   icon: "bi-sun-fill",  cls: "badge-pay-in"  },
+    night: { label: "Night", icon: "bi-moon-fill", cls: "badge-pay-out" }
+};
+
+function renderProd(p) {
+    const shift = SHIFT_CFG[p.shift] || { label: p.shift, icon: "bi-circle", cls: "" };
+    const date  = new Date(p.date).toLocaleDateString("en-IN",
+        { day: "2-digit", month: "short", year: "numeric" });
+
+    let detail = "";
+    if (p.item_type === "drip") {
+        const parts = [];
+        if (parseFloat(p.quantity)) parts.push(parseFloat(p.quantity) + " pcs");
+        if (parseFloat(p.meters))   parts.push(parseFloat(p.meters)   + " m");
+        if (parseFloat(p.weight))   parts.push(parseFloat(p.weight)   + " kg");
+        detail = parts.join(" · ");
+    } else if (p.item_type === "dhana") {
+        detail = parseFloat(p.bags) ? parseFloat(p.bags) + " bags" : "";
+    }
+
+    const itemLabel = p.item_type === "drip" ? "Drip" : "Dhana";
+    const itemColor = p.item_type === "drip" ? "#1a7c2a" : "#8a5e00";
+    const itemBg    = p.item_type === "drip" ? "#d1f5d3" : "#fff3cd";
+
+    return `
+    <div class="card p-3 mb-2" id="prod-${p.id}">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+            <div class="d-flex align-items-center gap-2">
+                <span class="type-badge" style="background:${itemBg};color:${itemColor}">${itemLabel}</span>
+                <span class="type-badge ${shift.cls}">
+                    <i class="bi ${shift.icon}"></i>${shift.label}
+                </span>
+            </div>
+            <small class="text-muted">${date}</small>
+        </div>
+        <div class="d-flex justify-content-between align-items-end mt-1">
+            <div>
+                <div class="fw-semibold">${p.worker || "<span class='text-muted'>No worker</span>"}</div>
+                ${detail ? `<small class="text-muted">${detail}</small>` : ""}
+                ${p.notes ? `<small class="text-muted d-block mt-1">${p.notes}</small>` : ""}
+            </div>
+            <button class="btn-icon danger" title="Delete" onclick="confirmDeleteProd(${p.id})">
+                <i class="bi bi-trash" style="color:#c0392b"></i>
+            </button>
+        </div>
+    </div>`;
+}
+
+/* ── Load production ── */
+async function loadProduction() {
+    document.getElementById("prodSpinner").style.display = "block";
+    document.getElementById("prodEmpty").style.display   = "none";
+    document.getElementById("prodList").innerHTML        = "";
+
+    try {
+        const q = new URLSearchParams();
+        const fi = document.getElementById("fProdItem").value;
+        const ff = document.getElementById("fProdFrom").value;
+        const ft = document.getElementById("fProdTo").value;
+        if (fi) q.set("item_type", fi);
+        if (ff) q.set("date_from", ff);
+        if (ft) q.set("date_to",   ft);
+
+        const r = await fetch("/api/production?" + q, { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+        const list = await r.json();
+
+        document.getElementById("prodSpinner").style.display = "none";
+        if (!list.length) { document.getElementById("prodEmpty").style.display = "block"; return; }
+        document.getElementById("prodList").innerHTML = list.map(renderProd).join("");
+    } catch {
+        document.getElementById("prodSpinner").style.display = "none";
+        document.getElementById("prodList").innerHTML =
+            `<div class="text-center text-danger py-3">Failed to load production entries.</div>`;
+    }
+}
+
+function resetProdFilters() {
+    document.getElementById("fProdItem").value = "";
+    document.getElementById("fProdFrom").value = "";
+    document.getElementById("fProdTo").value   = "";
+    loadProduction();
+}
+
+/* ── Init ── */
+loadStock();
+loadProduction();
+</script>
+</body>
+</html>

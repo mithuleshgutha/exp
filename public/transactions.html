@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transactions – OpTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container" style="max-width:620px">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h4><i class="bi bi-receipt me-2" style="color:#8b5e3c"></i>Transactions</h4>
+        <div class="d-flex align-items-center gap-2">
+            <small class="text-muted" id="userLabel"></small>
+            <button class="btn btn-sm" style="background:#f0ebe6;color:#8b5e3c"
+                    data-bs-toggle="collapse" data-bs-target="#filters" title="Filters">
+                <i class="bi bi-funnel-fill"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="collapse" id="filters">
+        <div class="filter-panel">
+            <div class="row g-2 mb-2">
+                <div class="col-12">
+                    <label class="form-label small fw-semibold mb-1">Customer Name</label>
+                    <input type="text" id="fCustomer" class="form-control form-control-sm" placeholder="Search by customer…">
+                </div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col">
+                    <label class="form-label small fw-semibold mb-1">From</label>
+                    <input type="date" id="fStart" class="form-control form-control-sm">
+                </div>
+                <div class="col">
+                    <label class="form-label small fw-semibold mb-1">To</label>
+                    <input type="date" id="fEnd" class="form-control form-control-sm">
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-semibold mb-1">Type</label>
+                <select id="fType" class="form-select form-select-sm">
+                    <option value="">All Types</option>
+                    <option value="SALE">Sale</option>
+                    <option value="PURCHASE">Purchase</option>
+                    <option value="PAYMENT_IN">Payment In</option>
+                    <option value="PAYMENT_OUT">Payment Out</option>
+                </select>
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary btn-sm flex-grow-1" onclick="applyFilters()">
+                    <i class="bi bi-search me-1"></i>Apply
+                </button>
+                <button class="btn btn-outline-secondary btn-sm px-3" onclick="resetFilters()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- List -->
+    <div id="spinner" class="text-center py-5 text-muted">
+        <div class="spinner-border" style="color:#8b5e3c"></div>
+    </div>
+    <div id="txList"></div>
+    <div id="emptyState" class="empty-state" style="display:none">
+        <i class="bi bi-inbox"></i>
+        <p>No transactions found</p>
+    </div>
+
+</div>
+
+<!-- FAB -->
+<button class="fab" data-bs-toggle="modal" data-bs-target="#txModal"
+        title="Add Transaction" onclick="openAdd()">+</button>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+    <a href="/transactions.html" class="active">
+        <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/customers.html">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="/stock.html">
+        <i class="bi bi-boxes"></i><span>Stock</span>
+    </a>
+</nav>
+
+<!-- ═══════════════ Add / Edit Transaction Modal ═══════════════ -->
+<div class="modal fade" id="txModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold" id="txModalTitle">Add Transaction</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Customer -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Customer <span class="text-danger">*</span></label>
+                    <div class="ac-wrap">
+                        <input type="text" id="custInput" class="form-control" placeholder="Type to search or add new…"
+                               oninput="onCustInput()" autocomplete="off">
+                        <div id="custDropdown" class="ac-dropdown" style="display:none"></div>
+                    </div>
+                    <div id="newCustHint" class="new-cust-hint">
+                        <i class="bi bi-person-plus-fill me-1"></i>New customer — will be created on save
+                    </div>
+                    <input type="hidden" id="custId">
+                </div>
+
+                <!-- Category -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Category <span class="text-danger">*</span></label>
+                    <div class="cat-group">
+                        <button type="button" class="cat-btn active" data-cat="drip"    onclick="onCatChange('drip')">Drip</button>
+                        <button type="button" class="cat-btn"        data-cat="dhana"   onclick="onCatChange('dhana')">Dhana</button>
+                        <button type="button" class="cat-btn"        data-cat="scrap"   onclick="onCatChange('scrap')">Scrap</button>
+                        <button type="button" class="cat-btn"        data-cat="payment" onclick="onCatChange('payment')">Payment</button>
+                    </div>
+                    <small class="text-muted mt-1 d-block" id="catHint">Sale only — stock tracked</small>
+                </div>
+
+                <!-- Sale / Purchase (Dhana & Scrap) -->
+                <div class="mb-3" id="saleTypeRow" style="display:none">
+                    <label class="form-label fw-semibold small">Type <span class="text-danger">*</span></label>
+                    <select id="salePurchase" class="form-select">
+                        <option value="SALE">Sale</option>
+                        <option value="PURCHASE">Purchase</option>
+                    </select>
+                </div>
+
+                <!-- Payment type -->
+                <div class="mb-3" id="payTypeRow" style="display:none">
+                    <label class="form-label fw-semibold small">Payment Type <span class="text-danger">*</span></label>
+                    <select id="payType" class="form-select" onchange="onPayTypeChange()">
+                        <option value="PAYMENT_IN">Payment In (Customer paid you)</option>
+                        <option value="PAYMENT_OUT">Payment Out (You paid customer)</option>
+                    </select>
+                </div>
+
+                <!-- Stock inputs -->
+                <div id="stockRow" class="mb-3">
+                    <div class="row g-2">
+                        <!-- Drip: qty + meters + weight -->
+                        <div class="col" id="qtyCol">
+                            <label class="form-label fw-semibold small">Quantity</label>
+                            <input type="number" id="qty" class="form-control" placeholder="0" min="0" oninput="calcTotal()">
+                        </div>
+                        <div class="col" id="metersCol">
+                            <label class="form-label fw-semibold small">Meters</label>
+                            <input type="number" id="meters" class="form-control" placeholder="0.00" min="0">
+                        </div>
+                        <div class="col" id="weightCol">
+                            <label class="form-label fw-semibold small">Weight (kg)</label>
+                            <input type="number" id="weight" class="form-control" placeholder="0.00" min="0">
+                        </div>
+                        <!-- Dhana: bags -->
+                        <div class="col" id="bagsCol" style="display:none">
+                            <label class="form-label fw-semibold small">Bags</label>
+                            <input type="number" id="bags" class="form-control" placeholder="0" min="0" oninput="calcTotal()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rate -->
+                <div class="mb-3" id="rateRow">
+                    <label class="form-label fw-semibold small" id="rateLabel">Rate (₹/unit)</label>
+                    <input type="number" id="rate" class="form-control" placeholder="0.00" min="0" oninput="calcTotal()">
+                </div>
+
+                <!-- Drip: calc method -->
+                <div class="mb-2" id="calcMethodRow" style="display:none">
+                    <label class="form-label fw-semibold small">Calculate Using</label>
+                    <select id="calcMethod" class="form-select form-select-sm" onchange="calcTotal()">
+                        <option value="weight">Quantity × Weight × Rate</option>
+                        <option value="meters">Quantity × Meters × Rate</option>
+                    </select>
+                </div>
+
+                <!-- Drip: editable amount (auto-filled, overridable) -->
+                <div class="mb-3" id="totalInputRow" style="display:none">
+                    <label class="form-label fw-semibold small">
+                        Amount (₹)
+                        <small class="text-muted fw-normal ms-1">auto-calculated · editable</small>
+                    </label>
+                    <input type="number" id="totalInput" class="form-control" placeholder="0.00" min="0">
+                </div>
+
+                <!-- Dhana / Scrap: read-only total chip -->
+                <div id="totalChip" class="mb-3 p-3 rounded-3" style="background:#f8f5f2;display:none">
+                    <div class="d-flex justify-content-between">
+                        <span class="fw-semibold">Total</span>
+                        <span id="totalVal" class="fw-bold" style="color:#8b5e3c">₹0.00</span>
+                    </div>
+                </div>
+
+                <!-- Paid -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small" id="paidLabel">Amount Paid (₹)</label>
+                    <input type="number" id="paid" class="form-control" placeholder="0.00" min="0">
+                </div>
+
+                <!-- Date -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold small">Date</label>
+                    <input type="date" id="txDate" class="form-control">
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-1">
+                    <label class="form-label fw-semibold small">Notes</label>
+                    <textarea id="notes" class="form-control" rows="2" placeholder="Optional…"></textarea>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="handleSave()">
+                    <i class="bi bi-check-lg me-2"></i><span id="saveBtnText">Save Transaction</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ Edit History Modal ═══════════════ -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-clock-history me-2" style="color:#8b5e3c"></i>Edit History
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="historyBody">
+                <div class="text-center py-3 text-muted">
+                    <div class="spinner-border spinner-border-sm"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ Delete Confirm Modal ═══════════════ -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:340px">
+        <div class="modal-content text-center p-4">
+            <div style="font-size:44px">🗑️</div>
+            <h5 class="fw-bold mt-2">Delete Transaction?</h5>
+            <p class="text-muted small">The transaction will be hidden but still visible in the ledger.
+               The balance will be reversed.</p>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger flex-grow-1" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ── Auth ── */
+const token = localStorage.getItem("token");
+if (!token) location.href = "/login.html";
+document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+function logout() { localStorage.clear(); location.href = "/login.html"; }
+const authHeaders = () => ({
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + token
+});
+
+/* ── State ── */
+let customers  = [];
+let txMap      = {};
+let editingId  = null;
+let deletingId = null;
+
+/* ── Customers ── */
+async function loadCustomers() {
+    try {
+        const r = await fetch("/api/customers", { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+        customers = await r.json();
+    } catch { /* ignore */ }
+}
+
+/* ── Autocomplete ── */
+function onCustInput() {
+    const val  = document.getElementById("custInput").value.trim();
+    const dd   = document.getElementById("custDropdown");
+    const hint = document.getElementById("newCustHint");
+    document.getElementById("custId").value = "";
+
+    if (!val) { dd.style.display = "none"; hint.style.display = "none"; return; }
+
+    const matches = customers.filter(c => c.name.toLowerCase().includes(val.toLowerCase()));
+
+    if (matches.length) {
+        dd.innerHTML = matches.map(c => `
+            <div class="ac-item" onclick="pickCustomer(${c.id}, '${c.name.replace(/'/g,"\\'")}')">
+                <span>${c.name}</span>
+                <span class="cust-id">${c.customer_uid || ""}</span>
+            </div>`).join("");
+        dd.style.display = "block";
+        hint.style.display = "none";
+    } else {
+        dd.style.display = "none";
+        hint.style.display = "block";
+    }
+}
+
+function pickCustomer(id, name) {
+    document.getElementById("custInput").value = name;
+    document.getElementById("custId").value    = id;
+    document.getElementById("custDropdown").style.display = "none";
+    document.getElementById("newCustHint").style.display  = "none";
+}
+
+document.addEventListener("click", (e) => {
+    if (!e.target.closest("#custInput") && !e.target.closest("#custDropdown"))
+        document.getElementById("custDropdown").style.display = "none";
+});
+
+/* ── Category helpers ── */
+function getCategory() {
+    return document.querySelector(".cat-btn.active")?.dataset.cat || "drip";
+}
+
+const CAT_HINTS = {
+    drip:    "Sale only — stock tracked (Qty, Meters, Weight)",
+    dhana:   "Purchase & Sale — stock tracked (Bags)",
+    scrap:   "Purchase & Sale — no stock tracking",
+    payment: "Record a payment received or made"
+};
+
+function onCatChange(cat) {
+    document.querySelectorAll(".cat-btn").forEach(b =>
+        b.classList.toggle("active", b.dataset.cat === cat)
+    );
+    document.getElementById("catHint").textContent = CAT_HINTS[cat] || "";
+
+    const isPayment = cat === "payment";
+
+    document.getElementById("saleTypeRow").style.display = (cat === "dhana" || cat === "scrap") ? "" : "none";
+    document.getElementById("payTypeRow").style.display  = isPayment ? "" : "none";
+    document.getElementById("stockRow").style.display    = isPayment ? "none" : "";
+    document.getElementById("rateRow").style.display     = isPayment ? "none" : "";
+    document.getElementById("totalChip").style.display   = "none";
+
+    document.getElementById("qtyCol").style.display       = (cat === "drip" || cat === "scrap") ? "" : "none";
+    document.getElementById("metersCol").style.display    = cat === "drip" ? "" : "none";
+    document.getElementById("weightCol").style.display    = cat === "drip" ? "" : "none";
+    document.getElementById("bagsCol").style.display      = cat === "dhana" ? "" : "none";
+    document.getElementById("calcMethodRow").style.display = cat === "drip" ? "" : "none";
+    document.getElementById("totalInputRow").style.display = cat === "drip" ? "" : "none";
+
+    document.getElementById("rateLabel").textContent = cat === "dhana" ? "Rate (₹/bag)" : "Rate (₹/unit)";
+
+    const payType = document.getElementById("payType").value;
+    document.getElementById("paidLabel").textContent = isPayment
+        ? (payType === "PAYMENT_IN" ? "Amount Received (₹)" : "Amount Paid to Customer (₹)")
+        : "Amount Paid (₹)";
+
+    calcTotal();
+}
+
+function onPayTypeChange() {
+    const v = document.getElementById("payType").value;
+    document.getElementById("paidLabel").textContent =
+        v === "PAYMENT_IN" ? "Amount Received (₹)" : "Amount Paid to Customer (₹)";
+}
+
+function calcTotal() {
+    const cat = getCategory();
+    if (cat === "payment") { document.getElementById("totalChip").style.display = "none"; return; }
+
+    if (cat === "drip") {
+        const qty    = parseFloat(document.getElementById("qty").value)    || 0;
+        const weight = parseFloat(document.getElementById("weight").value) || 0;
+        const meters = parseFloat(document.getElementById("meters").value) || 0;
+        const rt     = parseFloat(document.getElementById("rate").value)   || 0;
+        const method = document.getElementById("calcMethod").value;
+        const mult   = method === "weight" ? weight : meters;
+        const suggested = qty * mult * rt;
+        document.getElementById("totalInput").value = suggested ? suggested.toFixed(2) : "";
+        document.getElementById("totalChip").style.display = "none";
+        return;
+    }
+
+    const billing = cat === "dhana"
+        ? (parseFloat(document.getElementById("bags").value) || 0)
+        : (parseFloat(document.getElementById("qty").value)  || 0);
+    const rt    = parseFloat(document.getElementById("rate").value) || 0;
+    const total = billing * rt;
+    document.getElementById("totalVal").textContent =
+        "₹" + total.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+    document.getElementById("totalChip").style.display = (billing || rt) ? "" : "none";
+}
+
+function clearModal() {
+    ["custInput","qty","meters","weight","bags","rate","paid","notes","totalInput"]
+        .forEach(id => document.getElementById(id).value = "");
+    document.getElementById("custId").value        = "";
+    document.getElementById("txDate").value        = new Date().toISOString().slice(0, 10);
+    document.getElementById("salePurchase").value  = "SALE";
+    document.getElementById("payType").value       = "PAYMENT_IN";
+    document.getElementById("calcMethod").value    = "weight";
+    document.getElementById("custDropdown").style.display = "none";
+    document.getElementById("newCustHint").style.display  = "none";
+    onCatChange("drip");
+}
+
+/* ── Open Add ── */
+function openAdd() {
+    editingId = null;
+    clearModal();
+    document.getElementById("txModalTitle").textContent = "Add Transaction";
+    document.getElementById("saveBtnText").textContent  = "Save Transaction";
+}
+
+/* ── Open Edit ── */
+function openEdit(id) {
+    const t = txMap[id];
+    if (!t) return;
+    editingId = id;
+
+    clearModal();
+    document.getElementById("txModalTitle").textContent = "Edit Transaction";
+    document.getElementById("saveBtnText").textContent  = "Update Transaction";
+
+    document.getElementById("custInput").value = t.customer_name;
+    document.getElementById("custId").value    = t.customer_id;
+
+    let cat;
+    if (t.transaction_type === "PAYMENT_IN" || t.transaction_type === "PAYMENT_OUT") {
+        cat = "payment";
+    } else {
+        cat = t.item_type || (t.product ? t.product.toLowerCase() : "drip");
+    }
+
+    onCatChange(cat);
+
+    if (cat === "payment") {
+        document.getElementById("payType").value = t.transaction_type;
+        onPayTypeChange();
+    } else if (cat === "dhana" || cat === "scrap") {
+        document.getElementById("salePurchase").value = t.transaction_type;
+    }
+
+    document.getElementById("qty").value    = parseFloat(t.quantity)    || "";
+    document.getElementById("meters").value = parseFloat(t.meters)      || "";
+    document.getElementById("weight").value = parseFloat(t.weight)      || "";
+    document.getElementById("bags").value   = parseFloat(t.bags)        || "";
+    document.getElementById("rate").value   = parseFloat(t.rate)        || "";
+    document.getElementById("paid").value   = parseFloat(t.paid_amount) || "";
+    document.getElementById("notes").value  = t.notes || "";
+    document.getElementById("txDate").value = t.created_at
+        ? new Date(t.created_at).toISOString().slice(0, 10) : "";
+    if (cat === "drip") {
+        document.getElementById("totalInput").value = parseFloat(t.total) || "";
+    }
+
+    calcTotal();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("txModal")).show();
+}
+
+/* ── Save dispatcher ── */
+async function handleSave() {
+    if (editingId) await updateTx();
+    else            await saveTx();
+}
+
+/* ── Build body ── */
+function buildBody() {
+    const cat = getCategory();
+    const isPayment = cat === "payment";
+    let txType;
+    if (cat === "drip")         txType = "SALE";
+    else if (cat === "payment") txType = document.getElementById("payType").value;
+    else                        txType = document.getElementById("salePurchase").value;
+
+    return {
+        customer_name:    document.getElementById("custInput").value.trim(),
+        customer_id:      document.getElementById("custId").value || null,
+        transaction_type: txType,
+        item_type:        isPayment ? null : cat,
+        quantity:         (cat === "drip" || cat === "scrap")
+                            ? (parseFloat(document.getElementById("qty").value)  || 0) : 0,
+        meters:           cat === "drip"  ? (parseFloat(document.getElementById("meters").value) || 0) : 0,
+        weight:           cat === "drip"  ? (parseFloat(document.getElementById("weight").value) || 0) : 0,
+        bags:             cat === "dhana" ? (parseFloat(document.getElementById("bags").value)   || 0) : 0,
+        rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
+        total:            cat === "drip" ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
+        paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
+        notes:            document.getElementById("notes").value,
+        created_at:       document.getElementById("txDate").value || null
+    };
+}
+
+/* ── Add Transaction ── */
+async function saveTx() {
+    const body = buildBody();
+    if (!body.customer_name) { alert("Please enter a customer name."); return; }
+    try {
+        const r = await fetch("/api/transactions", {
+            method: "POST", headers: authHeaders(), body: JSON.stringify(body)
+        });
+        if (!r.ok) throw new Error();
+        bootstrap.Modal.getInstance(document.getElementById("txModal")).hide();
+        await loadCustomers();
+        fetchTx();
+    } catch { alert("Error saving transaction. Please try again."); }
+}
+
+/* ── Update Transaction ── */
+async function updateTx() {
+    const body = buildBody();
+    if (!body.customer_name) { alert("Please enter a customer name."); return; }
+    try {
+        const r = await fetch(`/api/transactions/${editingId}`, {
+            method: "PUT", headers: authHeaders(), body: JSON.stringify(body)
+        });
+        if (!r.ok) throw new Error();
+        editingId = null;
+        bootstrap.Modal.getInstance(document.getElementById("txModal")).hide();
+        await loadCustomers();
+        fetchTx();
+    } catch { alert("Error updating transaction. Please try again."); }
+}
+
+/* ── Delete ── */
+function confirmDelete(id) {
+    deletingId = id;
+    document.getElementById("confirmDeleteBtn").onclick = async () => {
+        try {
+            const r = await fetch(`/api/transactions/${deletingId}`, {
+                method: "DELETE", headers: authHeaders()
+            });
+            if (!r.ok) throw new Error();
+            bootstrap.Modal.getInstance(document.getElementById("deleteModal")).hide();
+            fetchTx();
+        } catch { alert("Error deleting transaction. Please try again."); }
+    };
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteModal")).show();
+}
+
+/* ── Edit History ── */
+async function showHistory(id) {
+    const histModal = bootstrap.Modal.getOrCreateInstance(document.getElementById("historyModal"));
+    document.getElementById("historyBody").innerHTML =
+        `<div class="text-center py-3 text-muted"><div class="spinner-border spinner-border-sm"></div></div>`;
+    histModal.show();
+
+    try {
+        const r = await fetch(`/api/transactions/${id}/history`, { headers: authHeaders() });
+        const { edits, current } = await r.json();
+
+        if (!edits.length) {
+            document.getElementById("historyBody").innerHTML =
+                `<p class="text-muted text-center py-3">No edit history found.</p>`;
+            return;
+        }
+
+        const snapshots = edits.map(e => e.old_snapshot);
+        snapshots.push(current);
+
+        const FIELD_LABELS = {
+            customer_name:    "Customer",
+            transaction_type: "Type",
+            item_type:        "Category",
+            quantity:         "Quantity",
+            meters:           "Meters",
+            weight:           "Weight (kg)",
+            bags:             "Bags",
+            rate:             "Rate",
+            total:            "Total",
+            paid_amount:      "Paid",
+            pending_amount:   "Pending",
+            notes:            "Notes",
+            created_at:       "Date"
+        };
+
+        const fmt = (key, val) => {
+            if (val === null || val === undefined || val === "") return "—";
+            if (["total","rate","paid_amount","pending_amount"].includes(key))
+                return "₹" + parseFloat(val).toLocaleString("en-IN", { minimumFractionDigits: 2 });
+            if (key === "created_at") return new Date(val).toLocaleDateString("en-IN");
+            return String(val);
+        };
+
+        let html = `<div class="history-timeline">`;
+
+        edits.forEach((edit, i) => {
+            const oldSnap = snapshots[i];
+            const newSnap = snapshots[i + 1];
+            const date = new Date(edit.edited_at).toLocaleString("en-IN",
+                { day:"2-digit", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" });
+
+            const changes = Object.keys(FIELD_LABELS)
+                .filter(k => String(oldSnap[k] ?? "") !== String(newSnap[k] ?? ""))
+                .map(k => `
+                    <div class="h-change">
+                        <span class="fw-semibold">${FIELD_LABELS[k]}:</span>
+                        <span class="h-from ms-1">${fmt(k, oldSnap[k])}</span>
+                        <i class="bi bi-arrow-right mx-1 text-muted" style="font-size:11px"></i>
+                        <span class="h-to">${fmt(k, newSnap[k])}</span>
+                    </div>`).join("");
+
+            html += `
+            <div class="h-item">
+                <div class="h-date"><i class="bi bi-clock me-1"></i>${date}${edit.editor_name ? " · " + edit.editor_name : ""}</div>
+                ${changes || `<div class="h-change text-muted">Details updated</div>`}
+            </div>`;
+        });
+
+        html += `</div>`;
+        document.getElementById("historyBody").innerHTML = html;
+
+    } catch {
+        document.getElementById("historyBody").innerHTML =
+            `<p class="text-danger text-center py-3">Failed to load history.</p>`;
+    }
+}
+
+/* ── Stock detail for card display ── */
+function stockDetail(t) {
+    const cat = t.item_type || (t.product ? t.product.toLowerCase() : null);
+    if (!cat) return "";
+    if (cat === "drip") {
+        const parts = [];
+        if (parseFloat(t.quantity)) parts.push(parseFloat(t.quantity) + " pcs");
+        if (parseFloat(t.meters))   parts.push(parseFloat(t.meters)   + " m");
+        if (parseFloat(t.weight))   parts.push(parseFloat(t.weight)   + " kg");
+        return "Drip" + (parts.length ? " · " + parts.join(" · ") : "");
+    }
+    if (cat === "dhana") {
+        return "Dhana" + (parseFloat(t.bags) ? " · " + parseFloat(t.bags) + " bags" : "");
+    }
+    if (cat === "scrap") {
+        return "Scrap" + (parseFloat(t.quantity) ? " · " + parseFloat(t.quantity) + " units" : "");
+    }
+    return t.product || "";
+}
+
+/* ── Render Transactions ── */
+const TYPE_CFG = {
+    SALE:        { label:"Sale",        cls:"badge-sale",     icon:"bi-arrow-up-right-circle-fill" },
+    PURCHASE:    { label:"Purchase",    cls:"badge-purchase", icon:"bi-arrow-down-left-circle-fill" },
+    PAYMENT_IN:  { label:"Payment In",  cls:"badge-pay-in",   icon:"bi-cash-coin" },
+    PAYMENT_OUT: { label:"Payment Out", cls:"badge-pay-out",  icon:"bi-cash" }
+};
+
+function renderTx(t) {
+    txMap[t.id] = t;
+    const cfg       = TYPE_CFG[t.transaction_type] || { label: t.transaction_type, cls:"", icon:"bi-circle" };
+    const isPayment = t.transaction_type === "PAYMENT_IN" || t.transaction_type === "PAYMENT_OUT";
+    const isDeleted = !!t.deleted_at;
+    const hasEdits  = parseInt(t.edit_count) > 0;
+    const date      = new Date(t.created_at).toLocaleDateString("en-IN",
+        { day:"2-digit", month:"short", year:"numeric" });
+    const pending   = parseFloat(t.pending_amount);
+    const detail    = stockDetail(t);
+
+    return `
+    <div class="card p-3 ${isDeleted ? "tx-deleted" : ""}" id="tx-${t.id}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="type-badge ${cfg.cls}">
+                <i class="bi ${cfg.icon}"></i>${cfg.label}
+            </span>
+            <small class="text-muted">${date}</small>
+        </div>
+        <div class="d-flex justify-content-between align-items-end">
+            <div>
+                <div class="fw-semibold">${t.customer_name}</div>
+                ${detail ? `<small class="text-muted">${detail}</small>` : ""}
+                ${t.notes ? `<small class="text-muted d-block mt-1">${t.notes}</small>` : ""}
+            </div>
+            <div class="text-end ms-3">
+                ${isPayment
+                    ? `<div class="fw-bold fs-6" style="color:#8b5e3c">₹${Number(t.paid_amount).toLocaleString("en-IN")}</div>`
+                    : `<div class="fw-bold fs-6">₹${Number(t.total).toLocaleString("en-IN")}</div>
+                       ${pending > 0
+                           ? `<small class="text-danger">Pending ₹${pending.toLocaleString("en-IN")}</small>`
+                           : `<small class="text-success"><i class="bi bi-check-circle me-1"></i>Cleared</small>`
+                       }`
+                }
+            </div>
+        </div>
+
+        <!-- Action bar -->
+        <div class="tx-actions">
+            <div class="d-flex align-items-center gap-2">
+                ${hasEdits
+                    ? `<button class="edited-chip" onclick="showHistory(${t.id})">
+                           <i class="bi bi-pencil-fill"></i>Edited
+                       </button>` : ""}
+                ${isDeleted
+                    ? `<span class="deleted-chip"><i class="bi bi-x-circle-fill me-1"></i>Deleted</span>` : ""}
+            </div>
+            ${!isDeleted ? `
+            <div class="d-flex gap-1">
+                <button class="btn-icon" title="Edit" onclick="openEdit(${t.id})">
+                    <i class="bi bi-pencil" style="color:#8b5e3c"></i>
+                </button>
+                <button class="btn-icon danger" title="Delete" onclick="confirmDelete(${t.id})">
+                    <i class="bi bi-trash" style="color:#c0392b"></i>
+                </button>
+            </div>` : ""}
+        </div>
+    </div>`;
+}
+
+/* ── Fetch Transactions ── */
+async function fetchTx(params = {}) {
+    document.getElementById("spinner").style.display    = "block";
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("txList").innerHTML         = "";
+    txMap = {};
+
+    try {
+        const q = new URLSearchParams();
+        if (params.customer_name) q.set("customer_name", params.customer_name);
+        if (params.start_date)    q.set("start_date",    params.start_date);
+        if (params.end_date)      q.set("end_date",      params.end_date);
+        if (params.type)          q.set("type",          params.type);
+
+        const r = await fetch("/api/transactions?" + q, { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+
+        const list = await r.json();
+        document.getElementById("spinner").style.display = "none";
+
+        if (!list.length) { document.getElementById("emptyState").style.display = "block"; return; }
+        document.getElementById("txList").innerHTML = list.map(renderTx).join("");
+
+    } catch {
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("txList").innerHTML =
+            `<div class="text-center text-danger py-3">Failed to load transactions</div>`;
+    }
+}
+
+/* ── Filters ── */
+function applyFilters() {
+    fetchTx({
+        customer_name: document.getElementById("fCustomer").value,
+        start_date:    document.getElementById("fStart").value,
+        end_date:      document.getElementById("fEnd").value,
+        type:          document.getElementById("fType").value
+    });
+}
+function resetFilters() {
+    ["fCustomer","fStart","fEnd"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("fType").value = "";
+    fetchTx();
+}
+
+/* ── Init ── */
+loadCustomers();
+fetchTx();
+</script>
+</body>
+</html>
