@@ -80,13 +80,18 @@ router.get("/balances", async (_req, res) => {
     }
 });
 
-// GET SINGLE CUSTOMER
+// GET SINGLE CUSTOMER (with transaction totals)
 router.get("/:id", async (req, res) => {
     try {
-        const result = await pool.query(
-            "SELECT * FROM customers WHERE id = $1",
-            [req.params.id]
-        );
+        const result = await pool.query(`
+            SELECT c.*,
+                COALESCE(SUM(CASE WHEN t.transaction_type='SALE'     AND t.deleted_at IS NULL THEN t.total ELSE 0 END), 0) AS total_sale,
+                COALESCE(SUM(CASE WHEN t.transaction_type='PURCHASE' AND t.deleted_at IS NULL THEN t.total ELSE 0 END), 0) AS total_purchase
+            FROM customers c
+            LEFT JOIN transactions t ON t.customer_id = c.id
+            WHERE c.id = $1
+            GROUP BY c.id
+        `, [req.params.id]);
         if (result.rows.length === 0) {
             return res.status(404).json({ error: "Customer not found" });
         }
