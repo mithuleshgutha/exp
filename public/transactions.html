@@ -159,11 +159,23 @@
                     </select>
                 </div>
 
-                <!-- Account (payment only) -->
+                <!-- Account (payment + expense) -->
                 <div class="mb-3" id="accountRow" style="display:none">
                     <label class="form-label fw-semibold small">Account</label>
                     <select id="accountId" class="form-select">
                         <option value="">— Select account —</option>
+                    </select>
+                </div>
+
+                <!-- Expense category -->
+                <div class="mb-3" id="expenseCatRow" style="display:none">
+                    <label class="form-label fw-semibold small">Category</label>
+                    <select id="expenseCat" class="form-select">
+                        <option value="">— Select category —</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Salary">Salary</option>
+                        <option value="Driver Fee">Driver Fee</option>
+                        <option value="Other">Other</option>
                     </select>
                 </div>
 
@@ -375,7 +387,8 @@ function onCatChange(cat) {
     document.getElementById("custRow").style.display      = isExpense ? "none" : "";
     document.getElementById("saleTypeRow").style.display  = (cat === "dhana" || cat === "scrap") ? "" : "none";
     document.getElementById("payTypeRow").style.display   = isPayment ? "" : "none";
-    document.getElementById("accountRow").style.display   = isPayment ? "" : "none";
+    document.getElementById("accountRow").style.display    = (isPayment || isExpense) ? "" : "none";
+    document.getElementById("expenseCatRow").style.display = isExpense ? "" : "none";
     document.getElementById("stockRow").style.display     = (isPayment || isExpense) ? "none" : "";
     document.getElementById("rateRow").style.display      = (isPayment || isExpense) ? "none" : "";
     document.getElementById("totalChip").style.display    = "none";
@@ -439,6 +452,7 @@ function clearModal() {
     document.getElementById("salePurchase").value  = "SALE";
     document.getElementById("payType").value       = "PAYMENT_IN";
     document.getElementById("accountId").value     = "";
+    document.getElementById("expenseCat").value    = "";
     document.getElementById("calcMethod").value    = "weight";
     document.getElementById("custDropdown").style.display = "none";
     document.getElementById("newCustHint").style.display  = "none";
@@ -490,7 +504,8 @@ function openEdit(id) {
     document.getElementById("bags").value     = parseFloat(t.bags)        || "";
     document.getElementById("rate").value     = parseFloat(t.rate)        || "";
     document.getElementById("paid").value     = parseFloat(t.paid_amount) || "";
-    document.getElementById("accountId").value = t.account_id || "";
+    document.getElementById("accountId").value  = t.account_id || "";
+    document.getElementById("expenseCat").value = t.expense_category || "";
     document.getElementById("notes").value  = t.notes || "";
     document.getElementById("txDate").value = t.created_at
         ? new Date(t.created_at).toISOString().slice(0, 10) : "";
@@ -532,7 +547,8 @@ function buildBody() {
         rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
         total:            cat === "drip" ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
-        account_id:       isPayment ? (document.getElementById("accountId").value || null) : null,
+        account_id:       (isPayment || isExpense) ? (document.getElementById("accountId").value || null) : null,
+        expense_category: isExpense ? (document.getElementById("expenseCat").value || null) : null,
         notes:            document.getElementById("notes").value,
         created_at:       document.getElementById("txDate").value || null
     };
@@ -703,7 +719,8 @@ function renderTx(t) {
         { day:"2-digit", month:"short", year:"numeric" });
     const pending   = parseFloat(t.pending_amount);
     const detail    = stockDetail(t);
-    const label     = isExpense ? (t.notes || "Business expense") : t.customer_name;
+    const label     = isExpense ? (t.expense_category || t.notes || "Expense") : t.customer_name;
+    const expNote   = isExpense && t.expense_category && t.notes ? t.notes : null;
 
     return `
     <div class="card p-3 ${isDeleted ? "tx-deleted" : ""}" id="tx-${t.id}">
@@ -718,6 +735,7 @@ function renderTx(t) {
                 <div class="fw-semibold">${label}</div>
                 ${detail ? `<small class="text-muted">${detail}</small>` : ""}
                 ${(!isExpense && t.notes) ? `<small class="text-muted d-block mt-1">${t.notes}</small>` : ""}
+                ${expNote ? `<small class="text-muted d-block mt-1">${expNote}</small>` : ""}
             </div>
             <div class="text-end ms-3">
                 ${(isPayment || isExpense)

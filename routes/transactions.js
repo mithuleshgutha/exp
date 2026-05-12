@@ -156,7 +156,8 @@ router.post("/", async (req, res) => {
     try {
         const { customer_name, customer_id, transaction_type,
                 quantity, rate, paid_amount, notes, created_at: txDate,
-                item_type, meters, weight, bags, total: totalOverride, account_id } = req.body;
+                item_type, meters, weight, bags, total: totalOverride, account_id,
+                expense_category } = req.body;
 
         const isExpense = transaction_type === "EXPENSE";
         let custId = null;
@@ -178,17 +179,18 @@ router.post("/", async (req, res) => {
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
         const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
-        const acctId = account_id ? parseInt(account_id) : null;
+        const acctId  = account_id ? parseInt(account_id) : null;
+        const expCat  = expense_category || null;
         const result = await pool.query(
             `INSERT INTO transactions
              (customer_id, transaction_type, quantity, rate,
               total, paid_amount, pending_amount, notes, created_at,
-              item_type, meters, weight, bags, account_id)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::TIMESTAMP,NOW()),$10,$11,$12,$13,$14)
+              item_type, meters, weight, bags, account_id, expense_category)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9::TIMESTAMP,NOW()),$10,$11,$12,$13,$14,$15)
              RETURNING *`,
             [custId, transaction_type, qty, rt,
              total, paid, pending, notes || null, txDate || null,
-             item_type || null, mts, wt, bg, acctId]
+             item_type || null, mts, wt, bg, acctId, expCat]
         );
 
         if (!isExpense) await applyBalance(pool, transaction_type, custId, pending, paid, +1);
@@ -206,7 +208,8 @@ router.put("/:id", async (req, res) => {
         const txId = parseInt(req.params.id);
         const { customer_name, customer_id, transaction_type,
                 quantity, rate, paid_amount, notes, created_at: txDate,
-                item_type, meters, weight, bags, total: totalOverride, account_id } = req.body;
+                item_type, meters, weight, bags, total: totalOverride, account_id,
+                expense_category } = req.body;
 
         const cur = await pool.query(
             `SELECT t.*, c.name AS customer_name
@@ -250,20 +253,21 @@ router.put("/:id", async (req, res) => {
         const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
         const acctId = account_id ? parseInt(account_id) : null;
+        const expCat = expense_category || null;
         await pool.query(
             `UPDATE transactions SET
-                customer_id    = $1,  transaction_type = $2,
-                quantity       = $3,  rate             = $4,
-                total          = $5,  paid_amount      = $6,
-                pending_amount = $7,  notes            = $8,
-                created_at     = COALESCE($9::TIMESTAMP, created_at),
-                item_type      = $10, meters           = $11,
-                weight         = $12, bags             = $13,
-                account_id     = $15
+                customer_id      = $1,  transaction_type = $2,
+                quantity         = $3,  rate             = $4,
+                total            = $5,  paid_amount      = $6,
+                pending_amount   = $7,  notes            = $8,
+                created_at       = COALESCE($9::TIMESTAMP, created_at),
+                item_type        = $10, meters           = $11,
+                weight           = $12, bags             = $13,
+                account_id       = $15, expense_category = $16
              WHERE id = $14`,
             [newCustId, transaction_type,
              qty, rt, total, paid, pending, notes || null, txDate || null,
-             item_type || null, mts, wt, bg, txId, acctId]
+             item_type || null, mts, wt, bg, txId, acctId, expCat]
         );
 
         if (!isExpense) await applyBalance(pool, transaction_type, newCustId, pending, paid, +1);

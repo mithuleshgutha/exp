@@ -94,6 +94,9 @@ async function initDB() {
         // account_id on transactions
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
 
+        // Expense category column
+        await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expense_category VARCHAR(50)`);
+
         // Stock tracking columns on transactions
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS item_type VARCHAR(20)`);
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS meters NUMERIC(14,2) DEFAULT 0`);

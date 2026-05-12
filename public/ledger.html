@@ -143,6 +143,18 @@
                     </select>
                 </div>
 
+                <!-- Expense category -->
+                <div class="mb-3" id="expenseCatRow" style="display:none">
+                    <label class="form-label fw-semibold small">Category</label>
+                    <select id="expenseCat" class="form-select">
+                        <option value="">— Select category —</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Salary">Salary</option>
+                        <option value="Driver Fee">Driver Fee</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
                 <!-- Stock inputs -->
                 <div id="stockRow" class="mb-3">
                     <div class="row g-2">
@@ -355,7 +367,9 @@ function onCatChange(cat) {
     const isPayment = cat === "payment";
     document.getElementById("saleTypeRow").style.display = (cat === "dhana" || cat === "scrap") ? "" : "none";
     document.getElementById("payTypeRow").style.display  = isPayment ? "" : "none";
-    document.getElementById("accountRow").style.display  = isPayment ? "" : "none";
+    const isExpenseCat = cat === "expense";
+    document.getElementById("accountRow").style.display    = (isPayment || isExpenseCat) ? "" : "none";
+    document.getElementById("expenseCatRow").style.display = isExpenseCat ? "" : "none";
     document.getElementById("stockRow").style.display    = isPayment ? "none" : "";
     document.getElementById("rateRow").style.display     = isPayment ? "none" : "";
     document.getElementById("totalChip").style.display   = "none";
@@ -419,6 +433,7 @@ function openEdit(id) {
     document.getElementById("salePurchase").value  = "SALE";
     document.getElementById("payType").value       = "PAYMENT_IN";
     document.getElementById("accountId").value     = "";
+    document.getElementById("expenseCat").value    = "";
     document.getElementById("calcMethod").value    = "weight";
     document.getElementById("custDropdown").style.display = "none";
     document.getElementById("newCustHint").style.display  = "none";
@@ -437,7 +452,8 @@ function openEdit(id) {
 
     if (cat === "payment") {
         document.getElementById("payType").value   = t.transaction_type;
-        document.getElementById("accountId").value = t.account_id || "";
+        document.getElementById("accountId").value  = t.account_id  || "";
+        document.getElementById("expenseCat").value = t.expense_category || "";
         onPayTypeChange();
     } else if (cat === "dhana" || cat === "scrap") {
         document.getElementById("salePurchase").value = t.transaction_type;
@@ -485,7 +501,8 @@ async function updateTx() {
         rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
         total:            cat === "drip" ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
-        account_id:       isPayment ? (document.getElementById("accountId").value || null) : null,
+        account_id:       (isPayment || cat === "expense") ? (document.getElementById("accountId").value || null) : null,
+        expense_category: cat === "expense" ? (document.getElementById("expenseCat").value || null) : null,
         notes:            document.getElementById("notes").value,
         created_at:       document.getElementById("txDate").value || null
     };
