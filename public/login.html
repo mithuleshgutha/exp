@@ -83,7 +83,7 @@
 
     <script>
         if (localStorage.getItem("token")) {
-            window.location.href = "/transactions.html";
+            window.location.href = "/dashboard.html";
         }
 
         document.getElementById("togglePwd").addEventListener("click", () => {
@@ -136,7 +136,7 @@
                 localStorage.setItem("userName", data.name);
                 localStorage.setItem("userUsername", data.username);
                 localStorage.setItem("userRole", data.role);
-                window.location.href = "/transactions.html";
+                window.location.href = "/dashboard.html";
 
             } catch {
                 errMsg.textContent = "Connection error. Please try again.";

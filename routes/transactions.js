@@ -53,11 +53,38 @@ async function applyStock(pool, itemType, txType, qty, meters, weight, bags, sig
 }
 
 const TX_WITH_EDITS = `
-    SELECT t.*, c.name AS customer_name, c.customer_uid,
+    SELECT t.*, COALESCE(c.name, '') AS customer_name, c.customer_uid,
            (SELECT COUNT(*) FROM transaction_edits WHERE transaction_id = t.id) AS edit_count
     FROM transactions t
-    JOIN customers c ON t.customer_id = c.id
+    LEFT JOIN customers c ON t.customer_id = c.id
 `;
+
+/* ── GET /summary ── */
+router.get("/summary", async (req, res) => {
+    try {
+        const { start_date, end_date } = req.query;
+        let where = "WHERE deleted_at IS NULL";
+        const params = [];
+        if (start_date) { params.push(start_date); where += ` AND DATE(created_at) >= $${params.length}`; }
+        if (end_date)   { params.push(end_date);   where += ` AND DATE(created_at) <= $${params.length}`; }
+
+        const result = await pool.query(`
+            SELECT
+                COALESCE(SUM(CASE WHEN transaction_type='SALE'        THEN total        ELSE 0 END), 0) AS total_sale,
+                COALESCE(SUM(CASE WHEN transaction_type='PURCHASE'    THEN total        ELSE 0 END), 0) AS total_purchase,
+                COALESCE(SUM(CASE WHEN transaction_type='EXPENSE'     THEN paid_amount  ELSE 0 END), 0) AS total_expense,
+                COALESCE(SUM(CASE WHEN transaction_type='PAYMENT_IN'  THEN paid_amount  ELSE 0 END), 0) AS total_payment_in,
+                COALESCE(SUM(CASE WHEN transaction_type='PAYMENT_OUT' THEN paid_amount  ELSE 0 END), 0) AS total_payment_out,
+                COALESCE(SUM(CASE WHEN transaction_type='SALE'        THEN pending_amount ELSE 0 END), 0) AS pending_receivable,
+                COALESCE(SUM(CASE WHEN transaction_type='PURCHASE'    THEN pending_amount ELSE 0 END), 0) AS pending_payable
+            FROM transactions ${where}
+        `, params);
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
 
 /* ── GET / (with filters) ── */
 router.get("/", async (req, res) => {
@@ -131,9 +158,12 @@ router.post("/", async (req, res) => {
                 quantity, rate, paid_amount, notes, created_at: txDate,
                 item_type, meters, weight, bags, total: totalOverride } = req.body;
 
-        if (!customer_name?.trim()) return res.status(400).json({ error: "Customer name required" });
-
-        const custId = await resolveCustomer(pool, customer_name, customer_id);
+        const isExpense = transaction_type === "EXPENSE";
+        let custId = null;
+        if (!isExpense) {
+            if (!customer_name?.trim()) return res.status(400).json({ error: "Customer name required" });
+            custId = await resolveCustomer(pool, customer_name, customer_id);
+        }
 
         const qty  = parseFloat(quantity)    || 0;
         const rt   = parseFloat(rate)        || 0;
@@ -144,9 +174,9 @@ router.post("/", async (req, res) => {
 
         const isPayment  = transaction_type === "PAYMENT_IN" || transaction_type === "PAYMENT_OUT";
         const billingQty = item_type === "dhana" ? bg : qty;
-        const total      = isPayment ? 0
+        const total      = (isPayment || isExpense) ? paid
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
-        const pending    = isPayment ? 0 : total - paid;
+        const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
         const result = await pool.query(
             `INSERT INTO transactions
@@ -160,7 +190,7 @@ router.post("/", async (req, res) => {
              item_type || null, mts, wt, bg]
         );
 
-        await applyBalance(pool, transaction_type, custId, pending, paid, +1);
+        if (!isExpense) await applyBalance(pool, transaction_type, custId, pending, paid, +1);
         await applyStock(pool, item_type, transaction_type, qty, mts, wt, bg, +1);
         res.json(result.rows[0]);
     } catch (err) {
@@ -193,12 +223,18 @@ router.put("/:id", async (req, res) => {
         );
 
         // Reverse old balance + stock
-        await applyBalance(pool, old.transaction_type, old.customer_id,
-            parseFloat(old.pending_amount), parseFloat(old.paid_amount), -1);
+        if (old.transaction_type !== "EXPENSE")
+            await applyBalance(pool, old.transaction_type, old.customer_id,
+                parseFloat(old.pending_amount), parseFloat(old.paid_amount), -1);
         await applyStock(pool, old.item_type, old.transaction_type,
             parseFloat(old.quantity), parseFloat(old.meters), parseFloat(old.weight), parseFloat(old.bags), -1);
 
-        const newCustId = await resolveCustomer(pool, customer_name || old.customer_name, customer_id);
+        const isExpense  = transaction_type === "EXPENSE";
+        const isPayment  = transaction_type === "PAYMENT_IN" || transaction_type === "PAYMENT_OUT";
+        let newCustId = null;
+        if (!isExpense) {
+            newCustId = await resolveCustomer(pool, customer_name || old.customer_name, customer_id);
+        }
 
         const qty  = parseFloat(quantity)    || 0;
         const rt   = parseFloat(rate)        || 0;
@@ -207,11 +243,10 @@ router.put("/:id", async (req, res) => {
         const wt   = parseFloat(weight)      || 0;
         const bg   = parseFloat(bags)        || 0;
 
-        const isPayment  = transaction_type === "PAYMENT_IN" || transaction_type === "PAYMENT_OUT";
         const billingQty = item_type === "dhana" ? bg : qty;
-        const total      = isPayment ? 0
+        const total      = (isPayment || isExpense) ? paid
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
-        const pending    = isPayment ? 0 : total - paid;
+        const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
         await pool.query(
             `UPDATE transactions SET
@@ -228,7 +263,7 @@ router.put("/:id", async (req, res) => {
              item_type || null, mts, wt, bg, txId]
         );
 
-        await applyBalance(pool, transaction_type, newCustId, pending, paid, +1);
+        if (!isExpense) await applyBalance(pool, transaction_type, newCustId, pending, paid, +1);
         await applyStock(pool, item_type, transaction_type, qty, mts, wt, bg, +1);
 
         const updated = await pool.query(TX_WITH_EDITS + " WHERE t.id = $1", [txId]);
@@ -254,8 +289,9 @@ router.delete("/:id", async (req, res) => {
 
         await pool.query("UPDATE transactions SET deleted_at = NOW() WHERE id = $1", [txId]);
 
-        await applyBalance(pool, t.transaction_type, t.customer_id,
-            parseFloat(t.pending_amount), parseFloat(t.paid_amount), -1);
+        if (t.transaction_type !== "EXPENSE")
+            await applyBalance(pool, t.transaction_type, t.customer_id,
+                parseFloat(t.pending_amount), parseFloat(t.paid_amount), -1);
         await applyStock(pool, t.item_type, t.transaction_type,
             parseFloat(t.quantity), parseFloat(t.meters), parseFloat(t.weight), parseFloat(t.bags), -1);
 

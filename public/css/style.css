@@ -126,6 +126,7 @@ body {
 .badge-purchase { background: #fde8e8; color: #c0392b; }
 .badge-pay-in   { background: #d6eaff; color: #1a5fa0; }
 .badge-pay-out  { background: #fff3cd; color: #8a5e00; }
+.badge-expense  { background: #f3e8ff; color: #7c3aed; }
 
 /* ── Customer ID chip ── */
 .cust-id {
