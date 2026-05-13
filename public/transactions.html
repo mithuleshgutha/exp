@@ -125,6 +125,10 @@
                     <div id="newCustHint" class="new-cust-hint">
                         <i class="bi bi-person-plus-fill me-1"></i>New customer — will be created on save
                     </div>
+                    <div id="openingBalRow" style="display:none" class="mt-2">
+                        <label class="form-label fw-semibold small mb-1">Opening Balance (₹)</label>
+                        <input type="number" id="openingBal" class="form-control form-control-sm" placeholder="0 · positive = they owe you, negative = you owe them">
+                    </div>
                     <input type="hidden" id="custId">
                 </div>
 
@@ -134,6 +138,7 @@
                     <div class="cat-group">
                         <button type="button" class="cat-btn active" data-cat="drip"    onclick="onCatChange('drip')">Drip</button>
                         <button type="button" class="cat-btn"        data-cat="dhana"   onclick="onCatChange('dhana')">Dhana</button>
+                        <button type="button" class="cat-btn"        data-cat="dipper"  onclick="onCatChange('dipper')">Dipper</button>
                         <button type="button" class="cat-btn"        data-cat="scrap"   onclick="onCatChange('scrap')">Scrap</button>
                         <button type="button" class="cat-btn"        data-cat="payment" onclick="onCatChange('payment')">Payment</button>
                         <button type="button" class="cat-btn"        data-cat="expense" onclick="onCatChange('expense')">Expense</button>
@@ -332,7 +337,12 @@ function onCustInput() {
     const hint = document.getElementById("newCustHint");
     document.getElementById("custId").value = "";
 
-    if (!val) { dd.style.display = "none"; hint.style.display = "none"; return; }
+    if (!val) {
+        dd.style.display = "none";
+        hint.style.display = "none";
+        document.getElementById("openingBalRow").style.display = "none";
+        return;
+    }
 
     const matches = customers.filter(c => c.name.toLowerCase().includes(val.toLowerCase()));
 
@@ -344,17 +354,21 @@ function onCustInput() {
             </div>`).join("");
         dd.style.display = "block";
         hint.style.display = "none";
+        document.getElementById("openingBalRow").style.display = "none";
     } else {
         dd.style.display = "none";
         hint.style.display = "block";
+        document.getElementById("openingBalRow").style.display = "";
     }
 }
 
 function pickCustomer(id, name) {
     document.getElementById("custInput").value = name;
     document.getElementById("custId").value    = id;
-    document.getElementById("custDropdown").style.display = "none";
-    document.getElementById("newCustHint").style.display  = "none";
+    document.getElementById("custDropdown").style.display  = "none";
+    document.getElementById("newCustHint").style.display   = "none";
+    document.getElementById("openingBalRow").style.display = "none";
+    document.getElementById("openingBal").value = "";
 }
 
 document.addEventListener("click", (e) => {
@@ -370,6 +384,7 @@ function getCategory() {
 const CAT_HINTS = {
     drip:    "Sale only — stock tracked (Qty, Meters, Weight)",
     dhana:   "Purchase & Sale — stock tracked (Bags)",
+    dipper:  "Purchase & Sale — Dipper product",
     scrap:   "Purchase & Sale — no stock tracking",
     payment: "Record a payment received or made",
     expense: "Business expense — fuel, wages, electricity, etc."
@@ -385,7 +400,7 @@ function onCatChange(cat) {
     const isExpense = cat === "expense";
 
     document.getElementById("custRow").style.display      = isExpense ? "none" : "";
-    document.getElementById("saleTypeRow").style.display  = (cat === "dhana" || cat === "scrap") ? "" : "none";
+    document.getElementById("saleTypeRow").style.display  = (cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("payTypeRow").style.display   = isPayment ? "" : "none";
     document.getElementById("accountRow").style.display    = (isPayment || isExpense) ? "" : "none";
     document.getElementById("expenseCatRow").style.display = isExpense ? "" : "none";
@@ -393,12 +408,12 @@ function onCatChange(cat) {
     document.getElementById("rateRow").style.display      = (isPayment || isExpense) ? "none" : "";
     document.getElementById("totalChip").style.display    = "none";
 
-    document.getElementById("qtyCol").style.display        = (cat === "drip" || cat === "scrap") ? "" : "none";
+    document.getElementById("qtyCol").style.display        = (cat === "drip" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("metersCol").style.display     = cat === "drip" ? "" : "none";
     document.getElementById("weightCol").style.display     = cat === "drip" ? "" : "none";
     document.getElementById("bagsCol").style.display       = cat === "dhana" ? "" : "none";
     document.getElementById("calcMethodRow").style.display = cat === "drip" ? "" : "none";
-    document.getElementById("totalInputRow").style.display = cat === "drip" ? "" : "none";
+    document.getElementById("totalInputRow").style.display = (isPayment || isExpense) ? "none" : "";
 
     document.getElementById("rateLabel").textContent = cat === "dhana" ? "Rate (₹/bag)" : "Rate (₹/unit)";
 
@@ -439,21 +454,22 @@ function calcTotal() {
         : (parseFloat(document.getElementById("qty").value)  || 0);
     const rt    = parseFloat(document.getElementById("rate").value) || 0;
     const total = billing * rt;
-    document.getElementById("totalVal").textContent =
-        "₹" + total.toLocaleString("en-IN", { minimumFractionDigits: 2 });
-    document.getElementById("totalChip").style.display = (billing || rt) ? "" : "none";
+    document.getElementById("totalInput").value = total ? total.toFixed(2) : "";
+    document.getElementById("totalChip").style.display = "none";
 }
 
 function clearModal() {
     ["custInput","qty","meters","weight","bags","rate","paid","notes","totalInput"]
         .forEach(id => document.getElementById(id).value = "");
-    document.getElementById("custId").value        = "";
-    document.getElementById("txDate").value        = new Date().toISOString().slice(0, 10);
-    document.getElementById("salePurchase").value  = "SALE";
-    document.getElementById("payType").value       = "PAYMENT_IN";
-    document.getElementById("accountId").value     = "";
-    document.getElementById("expenseCat").value    = "";
-    document.getElementById("calcMethod").value    = "weight";
+    document.getElementById("custId").value          = "";
+    document.getElementById("openingBal").value      = "";
+    document.getElementById("openingBalRow").style.display = "none";
+    document.getElementById("txDate").value          = new Date().toISOString().slice(0, 10);
+    document.getElementById("salePurchase").value    = "SALE";
+    document.getElementById("payType").value         = "PAYMENT_IN";
+    document.getElementById("accountId").value       = "";
+    document.getElementById("expenseCat").value      = "";
+    document.getElementById("calcMethod").value      = "weight";
     document.getElementById("custDropdown").style.display = "none";
     document.getElementById("newCustHint").style.display  = "none";
     onCatChange("drip");
@@ -509,7 +525,7 @@ function openEdit(id) {
     document.getElementById("notes").value  = t.notes || "";
     document.getElementById("txDate").value = t.created_at
         ? new Date(t.created_at).toISOString().slice(0, 10) : "";
-    if (cat === "drip") {
+    if (cat !== "payment" && cat !== "expense") {
         document.getElementById("totalInput").value = parseFloat(t.total) || "";
     }
 
@@ -518,9 +534,16 @@ function openEdit(id) {
 }
 
 /* ── Save dispatcher ── */
+let _saving = false;
 async function handleSave() {
-    if (editingId) await updateTx();
-    else            await saveTx();
+    if (_saving) return;
+    _saving = true;
+    try {
+        if (editingId) await updateTx();
+        else            await saveTx();
+    } finally {
+        _saving = false;
+    }
 }
 
 /* ── Build body ── */
@@ -539,18 +562,19 @@ function buildBody() {
         customer_id:      isExpense ? null : (document.getElementById("custId").value || null),
         transaction_type: txType,
         item_type:        (isPayment || isExpense) ? null : cat,
-        quantity:         (cat === "drip" || cat === "scrap")
+        quantity:         (cat === "drip" || cat === "scrap" || cat === "dipper")
                             ? (parseFloat(document.getElementById("qty").value)  || 0) : 0,
         meters:           cat === "drip"  ? (parseFloat(document.getElementById("meters").value) || 0) : 0,
         weight:           cat === "drip"  ? (parseFloat(document.getElementById("weight").value) || 0) : 0,
         bags:             cat === "dhana" ? (parseFloat(document.getElementById("bags").value)   || 0) : 0,
         rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
-        total:            cat === "drip" ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
+        total:            !(isPayment || isExpense) ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
         account_id:       (isPayment || isExpense) ? (document.getElementById("accountId").value || null) : null,
         expense_category: isExpense ? (document.getElementById("expenseCat").value || null) : null,
         notes:            document.getElementById("notes").value,
-        created_at:       document.getElementById("txDate").value || null
+        created_at:       document.getElementById("txDate").value || null,
+        opening_balance:  parseFloat(document.getElementById("openingBal").value) || 0
     };
 }
 
@@ -695,6 +719,9 @@ function stockDetail(t) {
     }
     if (cat === "scrap") {
         return "Scrap" + (parseFloat(t.quantity) ? " · " + parseFloat(t.quantity) + " units" : "");
+    }
+    if (cat === "dipper") {
+        return "Dipper" + (parseFloat(t.quantity) ? " · " + parseFloat(t.quantity) + " units" : "");
     }
     return t.product || "";
 }

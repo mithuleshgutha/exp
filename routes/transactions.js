@@ -4,7 +4,7 @@ const pool    = require("../db/db");
 
 /* ── helpers ── */
 
-async function resolveCustomer(pool, name, id) {
+async function resolveCustomer(pool, name, id, openingBalance = 0) {
     if (id) return parseInt(id);
 
     const existing = await pool.query(
@@ -12,9 +12,10 @@ async function resolveCustomer(pool, name, id) {
     );
     if (existing.rows.length) return existing.rows[0].id;
 
+    const ob = parseFloat(openingBalance) || 0;
     const newCust = await pool.query(
-        "INSERT INTO customers (name, current_balance) VALUES ($1, 0) RETURNING id",
-        [name.trim()]
+        "INSERT INTO customers (name, opening_balance, current_balance) VALUES ($1, $2, $2) RETURNING id",
+        [name.trim(), ob]
     );
     const newId = newCust.rows[0].id;
     const uid = "CUS-" + String(newId).padStart(4, "0");
@@ -89,14 +90,15 @@ router.get("/summary", async (req, res) => {
 /* ── GET / (with filters) ── */
 router.get("/", async (req, res) => {
     try {
-        const { customer_name, start_date, end_date, type } = req.query;
+        const { customer_name, start_date, end_date, type, account_id } = req.query;
         let query = TX_WITH_EDITS + " WHERE 1=1";
         const params = [];
 
         if (customer_name) { params.push(`%${customer_name}%`); query += ` AND LOWER(c.name) LIKE LOWER($${params.length})`; }
-        if (type)          { params.push(type);                  query += ` AND t.transaction_type = $${params.length}`; }
+        if (type)          { params.push(type);      query += ` AND t.transaction_type = $${params.length}`; }
         if (start_date)    { params.push(start_date);            query += ` AND DATE(t.created_at) >= $${params.length}`; }
         if (end_date)      { params.push(end_date);              query += ` AND DATE(t.created_at) <= $${params.length}`; }
+        if (account_id)    { params.push(account_id);            query += ` AND t.account_id = $${params.length}`; }
 
         query += " ORDER BY t.created_at DESC";
 
@@ -157,13 +159,13 @@ router.post("/", async (req, res) => {
         const { customer_name, customer_id, transaction_type,
                 quantity, rate, paid_amount, notes, created_at: txDate,
                 item_type, meters, weight, bags, total: totalOverride, account_id,
-                expense_category } = req.body;
+                expense_category, opening_balance } = req.body;
 
         const isExpense = transaction_type === "EXPENSE";
         let custId = null;
         if (!isExpense) {
             if (!customer_name?.trim()) return res.status(400).json({ error: "Customer name required" });
-            custId = await resolveCustomer(pool, customer_name, customer_id);
+            custId = await resolveCustomer(pool, customer_name, customer_id, opening_balance);
         }
 
         const qty  = parseFloat(quantity)    || 0;

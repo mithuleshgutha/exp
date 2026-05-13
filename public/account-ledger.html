@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Ledger – OpTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="container" style="max-width:620px">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-2">
+            <a href="/accounts.html" class="btn btn-sm" style="background:#f0ebe6;color:#8b5e3c">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h4 class="mb-0">Account Ledger</h4>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <small class="text-muted" id="userLabel"></small>
+            <button class="btn btn-sm btn-outline-secondary" onclick="logout()" title="Logout">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Account summary card -->
+    <div id="acctCard" class="card p-3 mb-3" style="display:none">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <div class="fw-bold fs-5" id="acctName"></div>
+                <small class="text-muted">Account</small>
+            </div>
+            <div class="text-end">
+                <div class="small text-muted mb-1">Net Balance</div>
+                <div class="fs-4 fw-bold" id="acctNet"></div>
+            </div>
+        </div>
+        <div class="d-flex gap-3 pt-2" style="border-top:1px solid #f0ece8;font-size:12px;color:#888">
+            <span><i class="bi bi-arrow-down-circle-fill text-success me-1"></i>In <strong id="acctIn"></strong></span>
+            <span><i class="bi bi-arrow-up-circle-fill text-danger me-1"></i>Out <strong id="acctOut"></strong></span>
+            <span><i class="bi bi-dash-circle text-secondary me-1"></i>Expense <strong id="acctExp"></strong></span>
+        </div>
+    </div>
+
+    <!-- Spinner -->
+    <div id="spinner" class="text-center py-5 text-muted">
+        <div class="spinner-border" style="color:#8b5e3c"></div>
+    </div>
+
+    <!-- Ledger list -->
+    <div id="txList"></div>
+    <div id="emptyState" class="empty-state" style="display:none">
+        <i class="bi bi-inbox"></i>
+        <p>No transactions for this account</p>
+    </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+    <a href="/dashboard.html">
+        <i class="bi bi-house-fill"></i><span>Home</span>
+    </a>
+    <a href="/transactions.html">
+        <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/customers.html">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="/accounts.html" class="active">
+        <i class="bi bi-wallet2"></i><span>Accounts</span>
+    </a>
+    <a href="/stock.html">
+        <i class="bi bi-boxes"></i><span>Stock</span>
+    </a>
+    <a href="/users.html" id="navUsers" style="display:none">
+        <i class="bi bi-shield-lock"></i><span>Users</span>
+    </a>
+</nav>
+<script>if (localStorage.getItem("userRole") === "admin") document.getElementById("navUsers").style.display = "";</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ── Auth ── */
+const token = localStorage.getItem("token");
+if (!token) location.href = "/login.html";
+document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+function logout() { localStorage.clear(); location.href = "/login.html"; }
+const authHeaders = () => ({
+    "Content-Type": "application/json",
+    "Authorization": "Bearer " + token
+});
+
+const accountId = new URLSearchParams(location.search).get("id");
+if (!accountId) location.href = "/accounts.html";
+
+const fmt = n => "₹" + Number(n).toLocaleString("en-IN", { minimumFractionDigits: 0 });
+
+/* ── Load account details ── */
+async function loadAccount() {
+    try {
+        const r = await fetch(`/api/accounts/${accountId}`, { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+        if (!r.ok) { location.href = "/accounts.html"; return; }
+        const a = await r.json();
+
+        const totalIn  = parseFloat(a.total_in)      || 0;
+        const totalOut = parseFloat(a.total_out)     || 0;
+        const totalExp = parseFloat(a.total_expense) || 0;
+        const net      = totalIn - totalOut - totalExp;
+
+        document.title = a.name + " – Account Ledger";
+        document.getElementById("acctName").textContent = a.name;
+        document.getElementById("acctIn").textContent   = fmt(totalIn);
+        document.getElementById("acctOut").textContent  = fmt(totalOut);
+        document.getElementById("acctExp").textContent  = fmt(totalExp);
+        document.getElementById("acctNet").textContent  = (net < 0 ? "-" : "") + fmt(Math.abs(net));
+        document.getElementById("acctNet").style.color  = net >= 0 ? "#1a7c2a" : "#c0392b";
+        document.getElementById("acctCard").style.display = "";
+    } catch { /* ignore */ }
+}
+
+/* ── Render ── */
+const TYPE_CFG = {
+    SALE:        { label:"Sale",        cls:"badge-sale",     icon:"bi-arrow-up-right-circle-fill" },
+    PURCHASE:    { label:"Purchase",    cls:"badge-purchase", icon:"bi-arrow-down-left-circle-fill" },
+    PAYMENT_IN:  { label:"Payment In",  cls:"badge-pay-in",   icon:"bi-cash-coin" },
+    PAYMENT_OUT: { label:"Payment Out", cls:"badge-pay-out",  icon:"bi-cash" },
+    EXPENSE:     { label:"Expense",     cls:"badge-expense",  icon:"bi-wallet2" }
+};
+
+function renderTx(t) {
+    const cfg       = TYPE_CFG[t.transaction_type] || { label: t.transaction_type, cls:"", icon:"bi-circle" };
+    const isPayment = t.transaction_type === "PAYMENT_IN" || t.transaction_type === "PAYMENT_OUT";
+    const isExpense = t.transaction_type === "EXPENSE";
+    const isDeleted = !!t.deleted_at;
+    const date      = new Date(t.created_at).toLocaleDateString("en-IN",
+        { day:"2-digit", month:"short", year:"numeric" });
+    const pending   = parseFloat(t.pending_amount);
+
+    let subtitle = "";
+    if (isExpense) {
+        subtitle = t.expense_category || t.notes || "Expense";
+    } else if (t.customer_name) {
+        subtitle = `<a href="/ledger.html?id=${t.customer_id}" class="text-decoration-none" style="color:#8b5e3c">${t.customer_name}</a>`;
+    }
+
+    return `
+    <div class="card p-3 ${isDeleted ? "tx-deleted" : ""}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+            <span class="type-badge ${cfg.cls}">
+                <i class="bi ${cfg.icon}"></i>${cfg.label}
+            </span>
+            <small class="text-muted">${date}</small>
+        </div>
+        <div class="d-flex justify-content-between align-items-end">
+            <div>
+                ${subtitle ? `<div class="text-muted small">${subtitle}</div>` : ""}
+                ${t.notes && !isExpense ? `<small class="text-muted d-block mt-1">${t.notes}</small>` : ""}
+            </div>
+            <div class="text-end ms-3">
+                ${isPayment || isExpense
+                    ? `<div class="fw-bold fs-6" style="color:#8b5e3c">₹${Number(t.paid_amount).toLocaleString("en-IN")}</div>`
+                    : `<div class="fw-bold fs-6">₹${Number(t.total).toLocaleString("en-IN")}</div>
+                       <small class="fw-semibold">Paid ₹${Number(t.paid_amount).toLocaleString("en-IN")}</small><br>
+                       ${pending > 0
+                           ? `<small class="text-danger">Pending ₹${pending.toLocaleString("en-IN")}</small>`
+                           : `<small class="text-success"><i class="bi bi-check-circle me-1"></i>Cleared</small>`
+                       }`
+                }
+            </div>
+        </div>
+        ${isDeleted ? `<div class="tx-actions"><span class="deleted-chip"><i class="bi bi-x-circle-fill me-1"></i>Deleted</span></div>` : ""}
+    </div>`;
+}
+
+/* ── Load transactions ── */
+async function loadLedger() {
+    document.getElementById("spinner").style.display    = "block";
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("txList").innerHTML         = "";
+
+    try {
+        const r = await fetch(`/api/transactions?account_id=${accountId}`, { headers: authHeaders() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+
+        const list = await r.json();
+        document.getElementById("spinner").style.display = "none";
+
+        if (!list.length) { document.getElementById("emptyState").style.display = "block"; return; }
+        document.getElementById("txList").innerHTML = list.map(renderTx).join("");
+    } catch {
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("txList").innerHTML =
+            `<div class="text-center text-danger py-3">Failed to load ledger</div>`;
+    }
+}
+
+/* ── Init ── */
+loadAccount();
+loadLedger();
+</script>
+</body>
+</html>

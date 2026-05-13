@@ -112,6 +112,7 @@
                     <div class="cat-group">
                         <button type="button" class="cat-btn active" data-cat="drip"    onclick="onCatChange('drip')">Drip</button>
                         <button type="button" class="cat-btn"        data-cat="dhana"   onclick="onCatChange('dhana')">Dhana</button>
+                        <button type="button" class="cat-btn"        data-cat="dipper"  onclick="onCatChange('dipper')">Dipper</button>
                         <button type="button" class="cat-btn"        data-cat="scrap"   onclick="onCatChange('scrap')">Scrap</button>
                         <button type="button" class="cat-btn"        data-cat="payment" onclick="onCatChange('payment')">Payment</button>
                     </div>
@@ -365,7 +366,7 @@ function onCatChange(cat) {
         b.classList.toggle("active", b.dataset.cat === cat)
     );
     const isPayment = cat === "payment";
-    document.getElementById("saleTypeRow").style.display = (cat === "dhana" || cat === "scrap") ? "" : "none";
+    document.getElementById("saleTypeRow").style.display = (cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("payTypeRow").style.display  = isPayment ? "" : "none";
     const isExpenseCat = cat === "expense";
     document.getElementById("accountRow").style.display    = (isPayment || isExpenseCat) ? "" : "none";
@@ -373,12 +374,12 @@ function onCatChange(cat) {
     document.getElementById("stockRow").style.display    = isPayment ? "none" : "";
     document.getElementById("rateRow").style.display     = isPayment ? "none" : "";
     document.getElementById("totalChip").style.display   = "none";
-    document.getElementById("qtyCol").style.display       = (cat === "drip" || cat === "scrap") ? "" : "none";
+    document.getElementById("qtyCol").style.display       = (cat === "drip" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("metersCol").style.display    = cat === "drip" ? "" : "none";
     document.getElementById("weightCol").style.display    = cat === "drip" ? "" : "none";
     document.getElementById("bagsCol").style.display      = cat === "dhana" ? "" : "none";
     document.getElementById("calcMethodRow").style.display = cat === "drip" ? "" : "none";
-    document.getElementById("totalInputRow").style.display = cat === "drip" ? "" : "none";
+    document.getElementById("totalInputRow").style.display = isPayment ? "none" : "";
     document.getElementById("rateLabel").textContent      = cat === "dhana" ? "Rate (₹/bag)" : "Rate (₹/unit)";
     const payType = document.getElementById("payType").value;
     document.getElementById("paidLabel").textContent = isPayment
@@ -415,9 +416,8 @@ function calcTotal() {
         : (parseFloat(document.getElementById("qty").value)  || 0);
     const rt    = parseFloat(document.getElementById("rate").value) || 0;
     const total = billing * rt;
-    document.getElementById("totalVal").textContent =
-        "₹" + total.toLocaleString("en-IN", { minimumFractionDigits: 2 });
-    document.getElementById("totalChip").style.display = (billing || rt) ? "" : "none";
+    document.getElementById("totalInput").value = total ? total.toFixed(2) : "";
+    document.getElementById("totalChip").style.display = "none";
 }
 
 /* ── Open Edit ── */
@@ -468,7 +468,7 @@ function openEdit(id) {
     document.getElementById("notes").value  = t.notes || "";
     document.getElementById("txDate").value = t.created_at
         ? new Date(t.created_at).toISOString().slice(0, 10) : "";
-    if (cat === "drip") {
+    if (cat !== "payment") {
         document.getElementById("totalInput").value = parseFloat(t.total) || "";
     }
 
@@ -477,9 +477,12 @@ function openEdit(id) {
 }
 
 /* ── Update Transaction ── */
+let _saving = false;
 async function updateTx() {
+    if (_saving) return;
     const custName = document.getElementById("custInput").value.trim();
     if (!custName) { alert("Please enter a customer name."); return; }
+    _saving = true;
 
     const cat = getCategory();
     const isPayment = cat === "payment";
@@ -493,13 +496,13 @@ async function updateTx() {
         customer_id:      document.getElementById("custId").value || null,
         transaction_type: txType,
         item_type:        isPayment ? null : cat,
-        quantity:         (cat === "drip" || cat === "scrap")
+        quantity:         (cat === "drip" || cat === "scrap" || cat === "dipper")
                             ? (parseFloat(document.getElementById("qty").value)  || 0) : 0,
         meters:           cat === "drip"  ? (parseFloat(document.getElementById("meters").value) || 0) : 0,
         weight:           cat === "drip"  ? (parseFloat(document.getElementById("weight").value) || 0) : 0,
         bags:             cat === "dhana" ? (parseFloat(document.getElementById("bags").value)   || 0) : 0,
         rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
-        total:            cat === "drip" ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
+        total:            !isPayment ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
         account_id:       (isPayment || cat === "expense") ? (document.getElementById("accountId").value || null) : null,
         expense_category: cat === "expense" ? (document.getElementById("expenseCat").value || null) : null,
@@ -517,6 +520,7 @@ async function updateTx() {
         await loadCustomer();
         loadLedger();
     } catch { alert("Error updating transaction. Please try again."); }
+    finally { _saving = false; }
 }
 
 /* ── Delete ── */
@@ -621,6 +625,9 @@ function stockDetail(t) {
     }
     if (cat === "scrap") {
         return "Scrap" + (parseFloat(t.quantity) ? " · " + parseFloat(t.quantity) + " units" : "");
+    }
+    if (cat === "dipper") {
+        return "Dipper" + (parseFloat(t.quantity) ? " · " + parseFloat(t.quantity) + " units" : "");
     }
     return t.product || "";
 }

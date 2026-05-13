@@ -108,10 +108,13 @@
             const totalOut = parseFloat(a.total_out) || 0;
             const net      = totalIn - totalOut;
             return `
-            <div class="acct-card">
+            <div class="acct-card" style="cursor:pointer" onclick="location.href='/account-ledger.html?id=${a.id}'">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="acct-name"><i class="bi bi-wallet2 me-2 text-muted"></i>${a.name}</div>
-                    <div class="acct-net" style="color:${net>=0?'#1a7c2a':'#c0392b'}">${net<0?'-':''}${fmt(Math.abs(net))}</div>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="acct-net" style="color:${net>=0?'#1a7c2a':'#c0392b'}">${net<0?'-':''}${fmt(Math.abs(net))}</div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </div>
                 </div>
                 <div class="acct-meta">
                     <span><i class="bi bi-arrow-down-circle-fill text-success me-1"></i>In ${fmt(totalIn)}</span>
