@@ -23,6 +23,12 @@
         </div>
     </div>
 
+    <!-- Period pills -->
+    <div class="d-flex gap-2 mb-3">
+        <span class="period-pill active" onclick="setPeriod('month',this)">This Month</span>
+        <span class="period-pill" onclick="setPeriod('all',this)">All Time</span>
+    </div>
+
     <!-- Search -->
     <div class="input-group mb-3">
         <span class="input-group-text" style="background:#f0ebe6;border-color:#dee2e6">
@@ -122,6 +128,28 @@ const authHeaders = () => ({
     "Authorization": "Bearer " + token
 });
 
+/* ── Period ── */
+let _period = "month";
+function getMonthRange() {
+    const today = new Date().toISOString().slice(0,10);
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    return { start, end: today };
+}
+function setPeriod(p, el) {
+    _period = p;
+    document.querySelectorAll(".period-pill").forEach(x => x.classList.remove("active"));
+    el.classList.add("active");
+    renderList(allCustomers);
+}
+function ledgerUrl(id) {
+    if (_period === "month") {
+        const { start, end } = getMonthRange();
+        return `/ledger.html?id=${id}&start_date=${start}&end_date=${end}`;
+    }
+    return `/ledger.html?id=${id}`;
+}
+
 /* ── Data ── */
 let allCustomers = [];
 
@@ -159,7 +187,7 @@ function renderList(customers) {
         const balNote = bal >= 0 ? "To Receive" : "To Pay";
         const uid = c.customer_uid || ("CUS-" + String(c.id).padStart(4,"0"));
         el.innerHTML += `
-        <div class="card p-3" style="cursor:pointer" onclick="location.href='/ledger.html?id=${c.id}'">
+        <div class="card p-3" style="cursor:pointer" onclick="location.href=ledgerUrl(${c.id})">
             <div class="d-flex justify-content-between align-items-start">
                 <div style="flex:1;min-width:0">
                     <div class="cust-id mb-1">${uid}</div>

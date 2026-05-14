@@ -8,9 +8,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        .stock-table th { font-size: 12px; color: #888; font-weight: 600; text-transform: uppercase; }
-        .stock-table td { font-size: 15px; font-weight: 700; vertical-align: middle; }
-        .stock-table .item-name { font-size: 13px; font-weight: 600; color: #333; }
+        .stock-card { border-radius: 14px; padding: 16px 18px; border: 1px solid #e8e0d8; background: #fff; }
+        .stock-card-icon { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+        .stock-stat-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+        .stock-stat-val { font-size: 18px; font-weight: 700; color: #222; line-height: 1.2; }
+        .drip-type-bar { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0ebe4; }
+        .drip-type-chip { flex: 1; background: #f8f5f2; border-radius: 10px; padding: 8px 10px; text-align: center; }
+        .drip-type-chip .dt-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+        .drip-type-chip .dt-val { font-size: 13px; font-weight: 700; color: #333; }
         .entry-chip { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .chip-prod { background: #d1f5d3; color: #1a7c2a; }
         .chip-cons { background: #fde8e8; color: #c0392b; }
@@ -33,23 +38,12 @@
         </div>
     </div>
 
-    <!-- Stock summary table -->
+    <!-- Stock summary cards -->
     <div id="stockSpinner" class="text-center py-4 text-muted">
         <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
     </div>
-    <div id="stockContent" class="card p-0 mb-4 overflow-hidden" style="display:none">
-        <table class="table table-bordered mb-0 stock-table">
-            <thead style="background:#f8f5f2">
-                <tr>
-                    <th class="ps-3">Item</th>
-                    <th class="text-center">Qty</th>
-                    <th class="text-center">Meters</th>
-                    <th class="text-center">Weight (kg)</th>
-                    <th class="text-center">Bags</th>
-                </tr>
-            </thead>
-            <tbody id="stockTableBody"></tbody>
-        </table>
+    <div id="stockContent" class="mb-4" style="display:none">
+        <div id="stockCards" class="d-flex flex-column gap-3"></div>
     </div>
 
     <!-- Production section -->
@@ -296,36 +290,81 @@ const authHeaders = () => ({ "Content-Type": "application/json", Authorization: 
 
 const fmt = n => parseFloat(n) ? parseFloat(n).toLocaleString("en-IN") : "—";
 
-/* ── Stock table ── */
+/* ── Stock cards ── */
 async function loadStock() {
     try {
-        const r = await fetch("/api/stock", { headers: authHeaders() });
-        if (r.status === 401) { location.href = "/login.html"; return; }
-        const data = await r.json();
+        const [stockRes, prodRes] = await Promise.all([
+            fetch("/api/stock", { headers: authHeaders() }),
+            fetch("/api/production?item_type=drip", { headers: authHeaders() })
+        ]);
+        if (stockRes.status === 401) { location.href = "/login.html"; return; }
+        const data  = await stockRes.json();
+        const prods = prodRes.ok ? await prodRes.json() : [];
 
         const map = {};
         data.forEach(s => { map[s.item_type] = s; });
 
-        const rows = [
-            { key: "drip",   label: "Drip",   color: "#1a7c2a", bg: "#d1f5d3", icon: "bi-droplet-fill" },
-            { key: "dhana",  label: "Dhana",  color: "#8a5e00", bg: "#fff3cd", icon: "bi-bag-fill" },
-            { key: "dipper", label: "Dipper", color: "#16a085", bg: "#d5f5f0", icon: "bi-grid-3x3-gap-fill" }
+        // Compute inline/online totals from production entries
+        const dripTypes = { inline: { qty: 0, meters: 0 }, online: { qty: 0, meters: 0 } };
+        prods.forEach(p => {
+            const dt = p.drip_type || "inline";
+            const sign = (p.entry_type === "consumption") ? -1 : 1;
+            if (dripTypes[dt]) {
+                dripTypes[dt].qty    += sign * (parseFloat(p.quantity) || 0);
+                dripTypes[dt].meters += sign * (parseFloat(p.meters)   || 0);
+            }
+        });
+
+        const cards = [
+            {
+                key: "drip", label: "Drip", color: "#1a7c2a", bg: "#d1f5d3", icon: "bi-droplet-fill",
+                stats: (s) => `
+                    <div class="d-flex gap-3 mt-2">
+                        <div><div class="stock-stat-label">Qty</div><div class="stock-stat-val">${fmt(s.quantity)}</div></div>
+                        <div><div class="stock-stat-label">Meters</div><div class="stock-stat-val">${fmt(s.meters)}</div></div>
+                        <div><div class="stock-stat-label">Weight (kg)</div><div class="stock-stat-val">${fmt(s.weight)}</div></div>
+                    </div>
+                    <div class="drip-type-bar">
+                        <div class="drip-type-chip">
+                            <div class="dt-label" style="color:#1a7c2a">Inline</div>
+                            <div class="dt-val">${fmt(dripTypes.inline.qty)} pcs</div>
+                            <div class="dt-val" style="font-size:11px;color:#888">${fmt(dripTypes.inline.meters)} m</div>
+                        </div>
+                        <div class="drip-type-chip">
+                            <div class="dt-label" style="color:#1565c0">Online</div>
+                            <div class="dt-val">${fmt(dripTypes.online.qty)} pcs</div>
+                            <div class="dt-val" style="font-size:11px;color:#888">${fmt(dripTypes.online.meters)} m</div>
+                        </div>
+                    </div>`
+            },
+            {
+                key: "dhana", label: "Dhana", color: "#8a5e00", bg: "#fff3cd", icon: "bi-bag-fill",
+                stats: (s) => `
+                    <div class="d-flex gap-3 mt-2">
+                        <div><div class="stock-stat-label">Bags</div><div class="stock-stat-val">${fmt(s.bags)}</div></div>
+                    </div>`
+            },
+            {
+                key: "dipper", label: "Dipper", color: "#16a085", bg: "#d5f5f0", icon: "bi-grid-3x3-gap-fill",
+                stats: (s) => `
+                    <div class="d-flex gap-3 mt-2">
+                        <div><div class="stock-stat-label">Qty</div><div class="stock-stat-val">${fmt(s.quantity)}</div></div>
+                    </div>`
+            }
         ];
 
-        document.getElementById("stockTableBody").innerHTML = rows.map(row => {
-            const s = map[row.key] || {};
-            return `<tr>
-                <td class="ps-3">
-                    <span class="stock-icon me-2 d-inline-flex" style="background:${row.bg};width:28px;height:28px;border-radius:8px;align-items:center;justify-content:center">
-                        <i class="bi ${row.icon}" style="color:${row.color};font-size:14px"></i>
+        document.getElementById("stockCards").innerHTML = cards.map(c => {
+            const s = map[c.key] || {};
+            return `
+            <div class="stock-card">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="stock-card-icon" style="background:${c.bg}">
+                        <i class="bi ${c.icon}" style="color:${c.color}"></i>
                     </span>
-                    <span class="item-name">${row.label}</span>
-                </td>
-                <td class="text-center">${row.key !== "dhana" ? fmt(s.quantity) : "—"}</td>
-                <td class="text-center">${row.key === "drip"  ? fmt(s.meters)   : "—"}</td>
-                <td class="text-center">${row.key === "drip"  ? fmt(s.weight)   : "—"}</td>
-                <td class="text-center">${row.key === "dhana" ? fmt(s.bags)     : "—"}</td>
-            </tr>`;
+                    <span class="fw-bold fs-6">${c.label}</span>
+                </div>
+                ${c.stats(s)}
+            </div>`;
         }).join("");
 
         document.getElementById("stockSpinner").style.display = "none";

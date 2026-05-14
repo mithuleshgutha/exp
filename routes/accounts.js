@@ -7,7 +7,8 @@ router.get("/", async (_req, res) => {
         const result = await pool.query(`
             SELECT a.id, a.name, a.created_at,
                 COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_IN'  AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_in,
-                COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_OUT' AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out
+                COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_OUT' AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out,
+                COALESCE(SUM(CASE WHEN t.transaction_type='EXPENSE'     AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_expense
             FROM accounts a
             LEFT JOIN transactions t ON t.account_id = a.id
             GROUP BY a.id

@@ -27,6 +27,12 @@
         </div>
     </div>
 
+    <!-- Period pills -->
+    <div class="d-flex gap-2 px-3 pt-2 pb-1">
+        <span class="period-pill active" id="pill-month" onclick="setPeriod('month',this)">This Month</span>
+        <span class="period-pill" id="pill-all" onclick="setPeriod('all',this)">All Time</span>
+    </div>
+
     <!-- Filter Panel -->
     <div class="collapse" id="filters">
         <div class="filter-panel">
@@ -176,14 +182,6 @@
                     </select>
                 </div>
 
-                <!-- Account (payment + expense) -->
-                <div class="mb-3" id="accountRow" style="display:none">
-                    <label class="form-label fw-semibold small">Account</label>
-                    <select id="accountId" class="form-select">
-                        <option value="">— Select account —</option>
-                    </select>
-                </div>
-
                 <!-- Expense category -->
                 <div class="mb-3" id="expenseCatRow" style="display:none">
                     <label class="form-label fw-semibold small">Category</label>
@@ -256,6 +254,14 @@
                 <div class="mb-3">
                     <label class="form-label fw-semibold small" id="paidLabel">Amount Paid (₹)</label>
                     <input type="number" id="paid" class="form-control" placeholder="0.00" min="0">
+                </div>
+
+                <!-- Account -->
+                <div class="mb-3" id="accountRow" style="display:none">
+                    <label class="form-label fw-semibold small">Account</label>
+                    <select id="accountId" class="form-select">
+                        <option value="">— Select account —</option>
+                    </select>
                 </div>
 
                 <!-- Date -->
@@ -414,7 +420,7 @@ function onCatChange(cat) {
     document.getElementById("custRow").style.display      = isExpense ? "none" : "";
     document.getElementById("saleTypeRow").style.display  = (cat === "drip" || cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("payTypeRow").style.display   = isPayment ? "" : "none";
-    document.getElementById("accountRow").style.display    = (isPayment || isExpense) ? "" : "none";
+    document.getElementById("accountRow").style.display    = (isPayment || isExpense || cat === "drip" || cat === "dhana" || cat === "dipper" || cat === "scrap") ? "" : "none";
     document.getElementById("expenseCatRow").style.display = isExpense ? "" : "none";
     document.getElementById("stockRow").style.display     = (isPayment || isExpense) ? "none" : "";
     document.getElementById("rateRow").style.display      = (isPayment || isExpense) ? "none" : "";
@@ -581,7 +587,7 @@ function buildBody() {
         rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
         total:            !(isPayment || isExpense) ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
-        account_id:       (isPayment || isExpense) ? (document.getElementById("accountId").value || null) : null,
+        account_id:       document.getElementById("accountId").value || null,
         expense_category: isExpense ? (document.getElementById("expenseCat").value || null) : null,
         notes:            document.getElementById("notes").value,
         created_at:       document.getElementById("txDate").value || null,
@@ -859,10 +865,43 @@ function resetFilters() {
     fetchTx();
 }
 
+function getMonthRange() {
+    const today = new Date().toISOString().slice(0,10);
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    return { start, end: today };
+}
+function setPeriod(p, el) {
+    document.querySelectorAll(".period-pill").forEach(x => x.classList.remove("active"));
+    el.classList.add("active");
+    if (p === "month") {
+        const { start, end } = getMonthRange();
+        document.getElementById("fStart").value = start;
+        document.getElementById("fEnd").value   = end;
+    } else {
+        document.getElementById("fStart").value = "";
+        document.getElementById("fEnd").value   = "";
+    }
+    applyFilters();
+}
+
 /* ── Init ── */
 loadCustomers();
-fetchTx();
 loadAccounts();
+(function initFromUrl() {
+    const p = new URLSearchParams(location.search);
+    const t = p.get("type");
+    if (t) {
+        document.getElementById("fType").value = t;
+        applyFilters();
+    } else {
+        // default to this month
+        const { start, end } = getMonthRange();
+        document.getElementById("fStart").value = start;
+        document.getElementById("fEnd").value   = end;
+        fetchTx();
+    }
+})();
 
 async function loadAccounts() {
     try {

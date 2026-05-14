@@ -25,6 +25,12 @@
     </div>
 </div>
 
+<!-- Period pills -->
+<div class="d-flex gap-2 px-3 pt-2 pb-1">
+    <span class="period-pill active" onclick="setPeriod('month',this)">This Month</span>
+    <span class="period-pill" onclick="setPeriod('all',this)">All Time</span>
+</div>
+
 <!-- Filters -->
 <div class="collapse" id="filters">
     <div class="filter-panel">
@@ -240,8 +246,32 @@ function resetFilters() {
     fetchExpenses();
 }
 
+function getMonthRange() {
+    const today = new Date().toISOString().slice(0,10);
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    return { start, end: today };
+}
+function setPeriod(p, el) {
+    document.querySelectorAll(".period-pill").forEach(x => x.classList.remove("active"));
+    el.classList.add("active");
+    if (p === "month") {
+        const { start, end } = getMonthRange();
+        document.getElementById("fStart").value = start;
+        document.getElementById("fEnd").value   = end;
+    } else {
+        document.getElementById("fStart").value = "";
+        document.getElementById("fEnd").value   = "";
+    }
+    applyFilters();
+}
+
 loadAccounts();
-fetchExpenses();
+// default this month
+const { start: _ms, end: _me } = getMonthRange();
+document.getElementById("fStart").value = _ms;
+document.getElementById("fEnd").value   = _me;
+fetchExpenses({ start_date: _ms, end_date: _me });
 </script>
 </body>
 </html>

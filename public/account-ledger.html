@@ -47,6 +47,12 @@
         </div>
     </div>
 
+    <!-- Period pills -->
+    <div class="d-flex gap-2 mb-3">
+        <span class="period-pill active" onclick="setPeriod('month',this)">This Month</span>
+        <span class="period-pill" onclick="setPeriod('all',this)">All Time</span>
+    </div>
+
     <!-- Spinner -->
     <div id="spinner" class="text-center py-5 text-muted">
         <div class="spinner-border" style="color:#8b5e3c"></div>
@@ -164,7 +170,7 @@ function renderTx(t) {
         <div class="d-flex justify-content-between align-items-end">
             <div>
                 ${subtitle ? `<div class="text-muted small">${subtitle}</div>` : ""}
-                ${t.notes && !isExpense ? `<small class="text-muted d-block mt-1">${t.notes}</small>` : ""}
+                ${t.notes && (!isExpense || t.expense_category) ? `<small class="text-muted d-block mt-1">${t.notes}</small>` : ""}
             </div>
             <div class="text-end ms-3">
                 ${isPayment || isExpense
@@ -183,13 +189,33 @@ function renderTx(t) {
 }
 
 /* ── Load transactions ── */
+function getMonthRange() {
+    const today = new Date().toISOString().slice(0,10);
+    const d = new Date();
+    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    return { start, end: today };
+}
+let _ledgerPeriod = "month";
+function setPeriod(p, el) {
+    _ledgerPeriod = p;
+    document.querySelectorAll(".period-pill").forEach(x => x.classList.remove("active"));
+    el.classList.add("active");
+    loadLedger();
+}
+
 async function loadLedger() {
     document.getElementById("spinner").style.display    = "block";
     document.getElementById("emptyState").style.display = "none";
     document.getElementById("txList").innerHTML         = "";
 
     try {
-        const r = await fetch(`/api/transactions?account_id=${accountId}`, { headers: authHeaders() });
+        const q = new URLSearchParams({ account_id: accountId });
+        if (_ledgerPeriod === "month") {
+            const { start, end } = getMonthRange();
+            q.set("start_date", start);
+            q.set("end_date",   end);
+        }
+        const r = await fetch(`/api/transactions?${q}`, { headers: authHeaders() });
         if (r.status === 401) { location.href = "/login.html"; return; }
 
         const list = await r.json();

@@ -121,10 +121,13 @@ router.get("/", async (req, res) => {
 /* ── GET /customer/:id ── */
 router.get("/customer/:id", async (req, res) => {
     try {
-        const result = await pool.query(
-            TX_WITH_EDITS + " WHERE t.customer_id = $1 ORDER BY t.created_at DESC",
-            [req.params.id]
-        );
+        const { start_date, end_date } = req.query;
+        let query = TX_WITH_EDITS + " WHERE t.customer_id = $1";
+        const params = [req.params.id];
+        if (start_date) { params.push(start_date); query += ` AND DATE(t.created_at) >= $${params.length}`; }
+        if (end_date)   { params.push(end_date);   query += ` AND DATE(t.created_at) <= $${params.length}`; }
+        query += " ORDER BY t.created_at DESC";
+        const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (err) {
         console.log(err.message);

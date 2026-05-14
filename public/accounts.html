@@ -107,9 +107,10 @@
             return;
         }
         el.innerHTML = accounts.map(a => {
-            const totalIn  = parseFloat(a.total_in)  || 0;
-            const totalOut = parseFloat(a.total_out) || 0;
-            const net      = totalIn - totalOut;
+            const totalIn   = parseFloat(a.total_in)      || 0;
+            const totalOut  = parseFloat(a.total_out)     || 0;
+            const totalExp  = parseFloat(a.total_expense) || 0;
+            const net       = totalIn - totalOut - totalExp;
             return `
             <div class="acct-card" style="cursor:pointer" onclick="location.href='/account-ledger.html?id=${a.id}'">
                 <div class="d-flex justify-content-between align-items-center">
@@ -122,6 +123,7 @@
                 <div class="acct-meta">
                     <span><i class="bi bi-arrow-down-circle-fill text-success me-1"></i>In ${fmt(totalIn)}</span>
                     <span><i class="bi bi-arrow-up-circle-fill text-danger me-1"></i>Out ${fmt(totalOut)}</span>
+                    ${totalExp ? `<span><i class="bi bi-receipt text-warning me-1"></i>Exp ${fmt(totalExp)}</span>` : ""}
                 </div>
             </div>`;
         }).join("");

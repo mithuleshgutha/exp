@@ -178,6 +178,26 @@ body {
     margin-top: 5px;
 }
 
+/* ── Period pills ── */
+.period-pill {
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid #dee2e6;
+    background: #fff;
+    color: #666;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.period-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
 /* ── Filter panel ── */
 .filter-panel {
     background: #fff;
