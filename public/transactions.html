@@ -173,6 +173,14 @@
                     </select>
                 </div>
 
+                <!-- Drip: pick type from stock -->
+                <div class="mb-3" id="dripTypeRow" style="display:none">
+                    <label class="form-label fw-semibold small">Drip Type <span class="text-danger">*</span></label>
+                    <select id="dripTypeSelect" class="form-select" onchange="onDripTypeSelect()">
+                        <option value="">— Select drip type —</option>
+                    </select>
+                </div>
+
                 <!-- Payment type -->
                 <div class="mb-3" id="payTypeRow" style="display:none">
                     <label class="form-label fw-semibold small">Payment Type <span class="text-danger">*</span></label>
@@ -427,8 +435,9 @@ function onCatChange(cat) {
     document.getElementById("totalChip").style.display    = "none";
 
     document.getElementById("qtyCol").style.display        = (cat === "drip" || cat === "scrap" || cat === "dipper") ? "" : "none";
-    document.getElementById("metersCol").style.display     = cat === "drip" ? "" : "none";
-    document.getElementById("weightCol").style.display     = cat === "drip" ? "" : "none";
+    document.getElementById("metersCol").style.display     = "none";
+    document.getElementById("weightCol").style.display     = "none";
+    document.getElementById("dripTypeRow").style.display   = cat === "drip" ? "" : "none";
     document.getElementById("bagsCol").style.display       = cat === "dhana" ? "" : "none";
     document.getElementById("calcMethodRow").style.display = cat === "drip" ? "" : "none";
     document.getElementById("totalInputRow").style.display = (isPayment || isExpense) ? "none" : "";
@@ -488,6 +497,7 @@ function clearModal() {
     document.getElementById("accountId").value       = "";
     document.getElementById("expenseCat").value      = "";
     document.getElementById("calcMethod").value      = "weight";
+    document.getElementById("dripTypeSelect").value  = "";
     document.getElementById("custDropdown").style.display = "none";
     document.getElementById("newCustHint").style.display  = "none";
     onCatChange("drip");
@@ -535,6 +545,7 @@ function openEdit(id) {
     document.getElementById("qty").value       = parseFloat(t.quantity)    || "";
     document.getElementById("meters").value   = parseFloat(t.meters)      || "";
     document.getElementById("weight").value   = parseFloat(t.weight)      || "";
+    if (cat === "drip") selectDripTypeByValues(parseFloat(t.meters) || 0, parseFloat(t.weight) || 0);
     document.getElementById("bags").value     = parseFloat(t.bags)        || "";
     document.getElementById("rate").value     = parseFloat(t.rate)        || "";
     document.getElementById("paid").value     = parseFloat(t.paid_amount) || "";
@@ -913,6 +924,65 @@ async function loadAccounts() {
             accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
     } catch { /* non-critical */ }
 }
+
+/* ── Drip stock types (for sale dropdown) ── */
+let dripStockTypes = [];
+
+async function loadDripTypes() {
+    try {
+        const r = await fetch("/api/production", { headers: authHeaders() });
+        if (!r.ok) return;
+        const prods = await r.json();
+        const map = {};
+        prods.forEach(p => {
+            if (p.item_type !== "drip") return;
+            const dt     = p.drip_type || "inline";
+            const meters = parseFloat(p.meters) || 0;
+            const weight = parseFloat(p.weight) || 0;
+            const key    = `${dt}|${meters}|${weight}`;
+            const sign   = p.entry_type === "consumption" ? -1 : 1;
+            if (!map[key]) map[key] = { drip_type: dt, meters, weight, qty: 0 };
+            map[key].qty += sign * (parseFloat(p.quantity) || 0);
+        });
+        dripStockTypes = Object.values(map).sort((a, b) => {
+            if (a.drip_type !== b.drip_type) return a.drip_type.localeCompare(b.drip_type);
+            if (a.meters !== b.meters) return a.meters - b.meters;
+            return a.weight - b.weight;
+        });
+        renderDripTypeOptions();
+    } catch { /* non-critical */ }
+}
+
+function renderDripTypeOptions() {
+    const sel = document.getElementById("dripTypeSelect");
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Select drip type —</option>' +
+        dripStockTypes.map((d, i) => {
+            const name  = d.drip_type.charAt(0).toUpperCase() + d.drip_type.slice(1);
+            const label = `${name} · ${d.meters}m · ${d.weight}kg (stock: ${d.qty})`;
+            return `<option value="${i}">${label}</option>`;
+        }).join("");
+    sel.value = cur;
+}
+
+function onDripTypeSelect() {
+    const d = dripStockTypes[document.getElementById("dripTypeSelect").value];
+    document.getElementById("meters").value = d ? d.meters : "";
+    document.getElementById("weight").value = d ? d.weight : "";
+    calcTotal();
+}
+
+function selectDripTypeByValues(meters, weight) {
+    let idx = dripStockTypes.findIndex(d => d.meters === meters && d.weight === weight);
+    if (idx < 0 && (meters || weight)) {
+        idx = dripStockTypes.length;
+        dripStockTypes.push({ drip_type: "custom", meters, weight, qty: 0 });
+        renderDripTypeOptions();
+    }
+    document.getElementById("dripTypeSelect").value = idx >= 0 ? String(idx) : "";
+}
+
+loadDripTypes();
 </script>
 </body>
 </html>

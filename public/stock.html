@@ -38,72 +38,78 @@
         </div>
     </div>
 
-    <!-- Stock summary cards -->
-    <div id="stockSpinner" class="text-center py-4 text-muted">
+    <!-- ── SECTION 1: Total Stock ── -->
+    <h6 class="fw-bold mb-2" style="color:#8b5e3c"><i class="bi bi-archive-fill me-1"></i>Total Stock</h6>
+    <div id="stockSpinner" class="text-center py-3 text-muted">
         <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
     </div>
-    <div id="stockContent" class="mb-4" style="display:none">
-        <div id="stockCards" class="d-flex flex-column gap-3"></div>
+    <div id="stockContent" style="display:none">
+
+        <!-- Drip summary -->
+        <div class="mb-1 small fw-semibold" style="color:#1a7c2a"><i class="bi bi-droplet-fill me-1"></i>Drip</div>
+        <table class="table table-bordered table-sm mb-3" style="font-size:13px">
+            <thead style="background:#f0faf1">
+                <tr><th>Type</th><th>Quantity</th><th>Meters</th><th>Weight (kg)</th></tr>
+            </thead>
+            <tbody id="dripSummaryBody">
+                <tr><td colspan="4" class="text-muted text-center">—</td></tr>
+            </tbody>
+        </table>
+
+        <!-- Dhana summary -->
+        <div class="mb-1 small fw-semibold" style="color:#8a5e00"><i class="bi bi-bag-fill me-1"></i>Dhana</div>
+        <table class="table table-bordered table-sm mb-3" style="font-size:13px">
+            <thead style="background:#fffbf0">
+                <tr><th>Purchased (bags)</th><th>Production (bags)</th><th>Consumed (bags)</th><th>Current</th></tr>
+            </thead>
+            <tbody><tr id="dhanaSummaryRow"><td>—</td><td>—</td><td>—</td><td>—</td></tr></tbody>
+        </table>
+
+        <!-- Dipper summary -->
+        <div class="mb-1 small fw-semibold" style="color:#16a085"><i class="bi bi-grid-3x3-gap-fill me-1"></i>Dipper</div>
+        <table class="table table-bordered table-sm mb-4" style="font-size:13px">
+            <thead style="background:#eefaf8">
+                <tr><th>Stock</th></tr>
+            </thead>
+            <tbody><tr id="dipperSummaryRow"><td>—</td></tr></tbody>
+        </table>
     </div>
 
-    <!-- Production section -->
+    <!-- ── SECTION 2: Stock Entries ── -->
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2" style="color:#8b5e3c"></i>Entries</h6>
+        <h6 class="fw-bold mb-0" style="color:#8b5e3c"><i class="bi bi-list-ul me-1"></i>Stock Entries</h6>
         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#prodModal" onclick="openAddProd()">
             <i class="bi bi-plus-lg me-1"></i>Add
         </button>
     </div>
-
-    <!-- Filters -->
     <div class="filter-panel mb-3">
         <div class="row g-2 align-items-end">
             <div class="col">
-                <label class="form-label small fw-semibold mb-1">Item</label>
-                <select id="fProdItem" class="form-select form-select-sm" onchange="loadProduction()">
-                    <option value="">All</option>
-                    <option value="drip">Drip</option>
-                    <option value="dhana">Dhana</option>
-                    <option value="dipper">Dipper</option>
-                </select>
-            </div>
-            <div class="col">
                 <label class="form-label small fw-semibold mb-1">From</label>
-                <input type="date" id="fProdFrom" class="form-control form-control-sm" onchange="loadProduction()">
+                <input type="date" id="fProdFrom" class="form-control form-control-sm" onchange="loadMovements()">
             </div>
             <div class="col">
                 <label class="form-label small fw-semibold mb-1">To</label>
-                <input type="date" id="fProdTo" class="form-control form-control-sm" onchange="loadProduction()">
+                <input type="date" id="fProdTo" class="form-control form-control-sm" onchange="loadMovements()">
             </div>
             <div class="col-auto">
                 <button class="btn btn-outline-secondary btn-sm" onclick="resetProdFilters()">Reset</button>
             </div>
         </div>
     </div>
-
-    <div id="prodSpinner" class="text-center py-3 text-muted" style="display:none">
+    <div id="mvSpinner" class="text-center py-3 text-muted" style="display:none">
         <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
     </div>
-
-    <!-- Production table -->
-    <div id="prodTableWrap" style="display:none">
-        <table class="table table-bordered table-sm mb-4" style="font-size:13px">
+    <div id="mvTableWrap" style="display:none">
+        <table class="table table-bordered table-sm mb-4" style="font-size:12px">
             <thead style="background:#f8f5f2">
-                <tr>
-                    <th>Date</th>
-                    <th>Item</th>
-                    <th>Type</th>
-                    <th>Details</th>
-                    <th>Worker</th>
-                    <th></th>
-                </tr>
+                <tr><th>Date</th><th>Item</th><th>Movement</th><th>Details</th><th>Party/Worker</th><th></th></tr>
             </thead>
-            <tbody id="prodTableBody"></tbody>
+            <tbody id="mvTableBody"></tbody>
         </table>
     </div>
-
-    <div id="prodEmpty" class="empty-state" style="display:none">
-        <i class="bi bi-clipboard-x"></i>
-        <p>No entries found</p>
+    <div id="mvEmpty" class="empty-state" style="display:none">
+        <i class="bi bi-clipboard-x"></i><p>No entries found</p>
     </div>
 </div>
 
@@ -155,12 +161,15 @@
 
                 <!-- Entry type (dhana + dipper) -->
                 <div class="mb-3" id="entryTypeRow">
-                    <label class="form-label fw-semibold small">Entry Type</label>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="cat-btn flex-fill" data-etype="production" onclick="onEtypeChange('production')">
+                    <label class="form-label fw-semibold small">Category</label>
+                    <div class="d-flex gap-2 flex-wrap" id="etypeBtns">
+                        <button type="button" class="cat-btn flex-fill" data-etype="purchase" onclick="onEtypeChange('purchase')">
+                            <i class="bi bi-bag-fill me-1"></i>Purchase
+                        </button>
+                        <button type="button" class="cat-btn flex-fill active" data-etype="production" onclick="onEtypeChange('production')">
                             <i class="bi bi-plus-circle me-1"></i>Production
                         </button>
-                        <button type="button" class="cat-btn flex-fill active" data-etype="consumption" onclick="onEtypeChange('consumption')">
+                        <button type="button" class="cat-btn flex-fill" data-etype="consumption" onclick="onEtypeChange('consumption')">
                             <i class="bi bi-dash-circle me-1"></i>Consumption
                         </button>
                     </div>
@@ -290,82 +299,64 @@ const authHeaders = () => ({ "Content-Type": "application/json", Authorization: 
 
 const fmt = n => parseFloat(n) ? parseFloat(n).toLocaleString("en-IN") : "—";
 
-/* ── Stock cards ── */
+/* ── Section 1: Total Stock ── */
 async function loadStock() {
     try {
         const [stockRes, prodRes] = await Promise.all([
-            fetch("/api/stock", { headers: authHeaders() }),
-            fetch("/api/production?item_type=drip", { headers: authHeaders() })
+            fetch("/api/stock",      { headers: authHeaders() }),
+            fetch("/api/production", { headers: authHeaders() })
         ]);
         if (stockRes.status === 401) { location.href = "/login.html"; return; }
-        const data  = await stockRes.json();
-        const prods = prodRes.ok ? await prodRes.json() : [];
+        const stockData = await stockRes.json();
+        const prods     = prodRes.ok ? await prodRes.json() : [];
 
         const map = {};
-        data.forEach(s => { map[s.item_type] = s; });
+        stockData.forEach(s => { map[s.item_type] = s; });
 
-        // Compute inline/online totals from production entries
-        const dripTypes = { inline: { qty: 0, meters: 0 }, online: { qty: 0, meters: 0 } };
+        // Compute breakdowns from production entries
+        const dhana = { purchase: 0, production: 0, consumption: 0 };
+        const dripTypes = {};   // key: drip_type|meters|weight  → summed quantity
         prods.forEach(p => {
-            const dt = p.drip_type || "inline";
-            const sign = (p.entry_type === "consumption") ? -1 : 1;
-            if (dripTypes[dt]) {
-                dripTypes[dt].qty    += sign * (parseFloat(p.quantity) || 0);
-                dripTypes[dt].meters += sign * (parseFloat(p.meters)   || 0);
+            if (p.item_type === "drip") {
+                const dt     = p.drip_type || "inline";
+                const meters = parseFloat(p.meters) || 0;
+                const weight = parseFloat(p.weight) || 0;
+                const key    = `${dt}|${meters}|${weight}`;
+                const sign   = (p.entry_type === "consumption") ? -1 : 1;
+                if (!dripTypes[key]) dripTypes[key] = { drip_type: dt, meters, weight, qty: 0 };
+                dripTypes[key].qty += sign * (parseFloat(p.quantity) || 0);
+            } else if (p.item_type === "dhana") {
+                const et = p.entry_type || "production";
+                dhana[et] = (dhana[et] || 0) + (parseFloat(p.bags) || 0);
             }
         });
 
-        const cards = [
-            {
-                key: "drip", label: "Drip", color: "#1a7c2a", bg: "#d1f5d3", icon: "bi-droplet-fill",
-                stats: (s) => `
-                    <div class="d-flex gap-3 mt-2">
-                        <div><div class="stock-stat-label">Qty</div><div class="stock-stat-val">${fmt(s.quantity)}</div></div>
-                        <div><div class="stock-stat-label">Meters</div><div class="stock-stat-val">${fmt(s.meters)}</div></div>
-                        <div><div class="stock-stat-label">Weight (kg)</div><div class="stock-stat-val">${fmt(s.weight)}</div></div>
-                    </div>
-                    <div class="drip-type-bar">
-                        <div class="drip-type-chip">
-                            <div class="dt-label" style="color:#1a7c2a">Inline</div>
-                            <div class="dt-val">${fmt(dripTypes.inline.qty)} pcs</div>
-                            <div class="dt-val" style="font-size:11px;color:#888">${fmt(dripTypes.inline.meters)} m</div>
-                        </div>
-                        <div class="drip-type-chip">
-                            <div class="dt-label" style="color:#1565c0">Online</div>
-                            <div class="dt-val">${fmt(dripTypes.online.qty)} pcs</div>
-                            <div class="dt-val" style="font-size:11px;color:#888">${fmt(dripTypes.online.meters)} m</div>
-                        </div>
-                    </div>`
-            },
-            {
-                key: "dhana", label: "Dhana", color: "#8a5e00", bg: "#fff3cd", icon: "bi-bag-fill",
-                stats: (s) => `
-                    <div class="d-flex gap-3 mt-2">
-                        <div><div class="stock-stat-label">Bags</div><div class="stock-stat-val">${fmt(s.bags)}</div></div>
-                    </div>`
-            },
-            {
-                key: "dipper", label: "Dipper", color: "#16a085", bg: "#d5f5f0", icon: "bi-grid-3x3-gap-fill",
-                stats: (s) => `
-                    <div class="d-flex gap-3 mt-2">
-                        <div><div class="stock-stat-label">Qty</div><div class="stock-stat-val">${fmt(s.quantity)}</div></div>
-                    </div>`
-            }
-        ];
+        const h = map["dhana"]  || {};
+        const i = map["dipper"] || {};
 
-        document.getElementById("stockCards").innerHTML = cards.map(c => {
-            const s = map[c.key] || {};
-            return `
-            <div class="stock-card">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                    <span class="stock-card-icon" style="background:${c.bg}">
-                        <i class="bi ${c.icon}" style="color:${c.color}"></i>
-                    </span>
-                    <span class="fw-bold fs-6">${c.label}</span>
-                </div>
-                ${c.stats(s)}
-            </div>`;
-        }).join("");
+        // Sort: inline first, then online; within each type by meters then weight
+        const dripRows = Object.values(dripTypes).sort((a, b) => {
+            if (a.drip_type !== b.drip_type) return a.drip_type.localeCompare(b.drip_type);
+            if (a.meters !== b.meters) return a.meters - b.meters;
+            return a.weight - b.weight;
+        });
+        document.getElementById("dripSummaryBody").innerHTML = dripRows.length
+            ? dripRows.map(r => {
+                const color = r.drip_type === "online" ? "#1565c0" : "#1a7c2a";
+                const bg    = r.drip_type === "online" ? "#dbeafe" : "#d1f5d3";
+                const label = r.drip_type.charAt(0).toUpperCase() + r.drip_type.slice(1);
+                return `<tr>
+                    <td><span class="badge rounded-pill" style="background:${bg};color:${color};font-size:11px">${label}</span></td>
+                    <td>${fmt(r.qty)}</td>
+                    <td>${fmt(r.meters)}</td>
+                    <td>${fmt(r.weight)}</td>
+                </tr>`;
+            }).join("")
+            : `<tr><td colspan="4" class="text-muted text-center">—</td></tr>`;
+        document.getElementById("dhanaSummaryRow").innerHTML =
+            `<td>${fmt(dhana.purchase)}</td><td>${fmt(dhana.production)}</td><td>${fmt(dhana.consumption)}</td><td class="fw-bold">${fmt(h.bags)}</td>`;
+        document.getElementById("dipperSummaryRow").innerHTML =
+            `<td class="fw-bold">${fmt(i.quantity)}</td>`;
 
         document.getElementById("stockSpinner").style.display = "none";
         document.getElementById("stockContent").style.display = "";
@@ -388,10 +379,10 @@ async function doReset() {
 }
 
 /* ── Modal helpers ── */
-function getProdCat()  { return document.querySelector("[data-pcat].active")?.dataset.pcat   || "drip"; }
-function getShift()    { return document.querySelector("[data-shift].active")?.dataset.shift  || "day"; }
-function getEntryType(){ return document.querySelector("[data-etype].active")?.dataset.etype  || "production"; }
-function getDripType() { return document.querySelector("[data-dtype].active")?.dataset.dtype  || "inline"; }
+function getProdCat()  { return document.querySelector("[data-pcat].active")?.dataset.pcat  || "drip"; }
+function getShift()    { return document.querySelector("[data-shift].active")?.dataset.shift || "day"; }
+function getEntryType(){ return document.querySelector("[data-etype].active")?.dataset.etype || "production"; }
+function getDripType() { return document.querySelector("[data-dtype].active")?.dataset.dtype || "inline"; }
 
 function onProdCatChange(cat) {
     document.querySelectorAll("[data-pcat]").forEach(b => b.classList.toggle("active", b.dataset.pcat === cat));
@@ -399,14 +390,10 @@ function onProdCatChange(cat) {
     document.getElementById("prodDhanaFields").style.display  = cat === "dhana"  ? "" : "none";
     document.getElementById("prodDipperFields").style.display = cat === "dipper" ? "" : "none";
     document.getElementById("dripTypeRow").style.display      = cat === "drip"   ? "" : "none";
-    // drip always production; dhana/dipper show entry type selector
     document.getElementById("entryTypeRow").style.display     = cat === "drip"   ? "none" : "";
-    if (cat === "dipper") {
-        // default consumption for dipper
-        onEtypeChange("consumption");
-    } else if (cat === "dhana") {
-        onEtypeChange("production");
-    }
+    document.querySelector("[data-etype='purchase']").style.display = cat === "dipper" ? "none" : "";
+    if (cat === "dipper") onEtypeChange("consumption");
+    else if (cat === "dhana") onEtypeChange("production");
 }
 
 function onShiftChange(s)  { document.querySelectorAll("[data-shift]").forEach(b => b.classList.toggle("active", b.dataset.shift === s)); }
@@ -428,7 +415,6 @@ async function saveProd() {
     const qty = cat === "dipper"
         ? (parseFloat(document.getElementById("prodDipperQty").value) || 0)
         : (parseFloat(document.getElementById("prodQty").value) || 0);
-
     const body = {
         item_type:  cat,
         entry_type: et,
@@ -442,58 +428,13 @@ async function saveProd() {
         bags:       cat === "dhana" ? (parseFloat(document.getElementById("prodBags").value)  || 0) : 0,
         notes:      document.getElementById("prodNotes").value || null
     };
-
     try {
         const r = await fetch("/api/production", { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
         if (!r.ok) throw new Error();
         bootstrap.Modal.getInstance(document.getElementById("prodModal")).hide();
         loadStock();
-        loadProduction();
+        loadMovements();
     } catch { alert("Error saving entry."); }
-}
-
-/* ── Render production rows ── */
-const ITEM_CFG = {
-    drip:   { label:"Drip",   color:"#1a7c2a", bg:"#d1f5d3" },
-    dhana:  { label:"Dhana",  color:"#8a5e00", bg:"#fff3cd" },
-    dipper: { label:"Dipper", color:"#16a085", bg:"#d5f5f0" }
-};
-
-function renderProdRow(p) {
-    const cfg  = ITEM_CFG[p.item_type] || { label: p.item_type, color:"#333", bg:"#eee" };
-    const date = new Date(p.date).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
-    const isConsumption = p.entry_type === "consumption";
-
-    let details = "";
-    if (p.item_type === "drip") {
-        const parts = [];
-        if (parseFloat(p.quantity)) parts.push(parseFloat(p.quantity) + " pcs");
-        if (parseFloat(p.meters))   parts.push(parseFloat(p.meters)   + " m");
-        if (parseFloat(p.weight))   parts.push(parseFloat(p.weight)   + " kg");
-        details = (p.drip_type ? `<strong>${p.drip_type}</strong> · ` : "") + parts.join(" · ");
-    } else if (p.item_type === "dhana") {
-        details = parseFloat(p.bags) ? parseFloat(p.bags) + " bags" : "—";
-    } else if (p.item_type === "dipper") {
-        details = parseFloat(p.quantity) ? parseFloat(p.quantity) + " units" : "—";
-    }
-
-    const shiftIcon = p.shift === "night" ? "bi-moon-fill" : "bi-sun-fill";
-    const etChip = isConsumption
-        ? `<span class="entry-chip chip-cons"><i class="bi bi-dash-circle me-1"></i>Consume</span>`
-        : `<span class="entry-chip chip-prod"><i class="bi bi-plus-circle me-1"></i>Produce</span>`;
-
-    return `<tr>
-        <td>${date}<br><small class="text-muted"><i class="bi ${shiftIcon} me-1"></i>${p.shift}</small></td>
-        <td><span class="badge rounded-pill" style="background:${cfg.bg};color:${cfg.color}">${cfg.label}</span></td>
-        <td>${etChip}</td>
-        <td style="font-size:12px">${details}${p.notes ? `<br><span class="text-muted">${p.notes}</span>` : ""}</td>
-        <td style="font-size:12px">${p.worker || "<span class='text-muted'>—</span>"}</td>
-        <td class="text-center">
-            <button class="btn-icon danger" onclick="confirmDeleteProd(${p.id})">
-                <i class="bi bi-trash" style="color:#c0392b;font-size:14px"></i>
-            </button>
-        </td>
-    </tr>`;
 }
 
 function confirmDeleteProd(id) {
@@ -503,51 +444,93 @@ function confirmDeleteProd(id) {
             if (!r.ok) throw new Error();
             bootstrap.Modal.getInstance(document.getElementById("deleteProdModal")).hide();
             loadStock();
-            loadProduction();
+            loadMovements();
         } catch { alert("Error deleting entry."); }
     };
     bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteProdModal")).show();
 }
 
-/* ── Load production ── */
-async function loadProduction() {
-    document.getElementById("prodSpinner").style.display   = "block";
-    document.getElementById("prodEmpty").style.display     = "none";
-    document.getElementById("prodTableWrap").style.display = "none";
+/* ── Section 2: Unified movements ── */
+const fmtDate = d => new Date(d).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
 
+const ITEM_BADGE = {
+    drip:   `<span class="badge rounded-pill" style="background:#d1f5d3;color:#1a7c2a">Drip</span>`,
+    dhana:  `<span class="badge rounded-pill" style="background:#fff3cd;color:#8a5e00">Dhana</span>`,
+    dipper: `<span class="badge rounded-pill" style="background:#d5f5f0;color:#16a085">Dipper</span>`
+};
+
+const MV_CHIP = {
+    purchase:    `<span class="entry-chip" style="background:#dbeafe;color:#1d4ed8"><i class="bi bi-bag-fill me-1"></i>Purchase</span>`,
+    production:  `<span class="entry-chip chip-prod"><i class="bi bi-plus-circle me-1"></i>Production</span>`,
+    consumption: `<span class="entry-chip chip-cons"><i class="bi bi-dash-circle me-1"></i>Consumption</span>`,
+    sale:        `<span class="entry-chip" style="background:#fde8e8;color:#c0392b"><i class="bi bi-arrow-up-right-circle me-1"></i>Sale</span>`,
+};
+
+function renderMovement(m) {
+    const chip = MV_CHIP[m.movement_type] || `<span class="entry-chip" style="background:#eee;color:#555">${m.movement_type}</span>`;
+    const item = ITEM_BADGE[m.item_type] || m.item_type;
+
+    let details = "";
+    if (m.item_type === "drip") {
+        const parts = [];
+        if (parseFloat(m.quantity)) parts.push(parseFloat(m.quantity) + " pcs");
+        if (parseFloat(m.meters))   parts.push(parseFloat(m.meters)   + " m");
+        if (parseFloat(m.weight))   parts.push(parseFloat(m.weight)   + " kg");
+        if (m.drip_type) parts.unshift(`<strong>${m.drip_type}${m.drip_spec ? ' ' + m.drip_spec : ''}</strong>`);
+        details = parts.join(" · ");
+    } else if (m.item_type === "dhana") {
+        details = parseFloat(m.bags) ? parseFloat(m.bags) + " bags" : "—";
+    } else if (m.item_type === "dipper") {
+        details = parseFloat(m.quantity) ? parseFloat(m.quantity) + " units" : "—";
+    }
+    if (m.notes) details += `<br><span class="text-muted">${m.notes}</span>`;
+
+    const party = m.customer_name || m.worker || "<span class='text-muted'>—</span>";
+
+    const deleteCell = m.entry_id
+        ? `<td class="text-center"><button class="btn-icon danger" onclick="confirmDeleteProd(${m.entry_id})"><i class="bi bi-trash" style="color:#c0392b;font-size:14px"></i></button></td>`
+        : `<td></td>`;
+
+    return `<tr>
+        <td>${fmtDate(m.date)}</td>
+        <td>${item}</td>
+        <td>${chip}</td>
+        <td style="font-size:12px">${details}</td>
+        <td style="font-size:12px">${party}</td>
+        ${deleteCell}
+    </tr>`;
+}
+
+async function loadMovements() {
+    document.getElementById("mvSpinner").style.display   = "block";
+    document.getElementById("mvTableWrap").style.display = "none";
+    document.getElementById("mvEmpty").style.display     = "none";
+    const q = new URLSearchParams();
+    const ff = document.getElementById("fProdFrom").value;
+    const ft = document.getElementById("fProdTo").value;
+    if (ff) q.set("date_from", ff);
+    if (ft) q.set("date_to",   ft);
     try {
-        const q = new URLSearchParams();
-        const fi = document.getElementById("fProdItem").value;
-        const ff = document.getElementById("fProdFrom").value;
-        const ft = document.getElementById("fProdTo").value;
-        if (fi) q.set("item_type", fi);
-        if (ff) q.set("date_from", ff);
-        if (ft) q.set("date_to",   ft);
-
-        const r = await fetch("/api/production?" + q, { headers: authHeaders() });
+        const r = await fetch("/api/stock/movements?" + q, { headers: authHeaders() });
         if (r.status === 401) { location.href = "/login.html"; return; }
         const list = await r.json();
-
-        document.getElementById("prodSpinner").style.display = "none";
-        if (!list.length) { document.getElementById("prodEmpty").style.display = "block"; return; }
-        document.getElementById("prodTableBody").innerHTML   = list.map(renderProdRow).join("");
-        document.getElementById("prodTableWrap").style.display = "";
+        document.getElementById("mvSpinner").style.display = "none";
+        if (!list.length) { document.getElementById("mvEmpty").style.display = "block"; return; }
+        document.getElementById("mvTableBody").innerHTML = list.map(renderMovement).join("");
+        document.getElementById("mvTableWrap").style.display = "";
     } catch {
-        document.getElementById("prodSpinner").style.display = "none";
-        document.getElementById("prodTableWrap").innerHTML =
-            `<div class="text-center text-danger py-3">Failed to load entries.</div>`;
+        document.getElementById("mvSpinner").style.display = "none";
     }
 }
 
 function resetProdFilters() {
-    document.getElementById("fProdItem").value = "";
     document.getElementById("fProdFrom").value = "";
     document.getElementById("fProdTo").value   = "";
-    loadProduction();
+    loadMovements();
 }
 
 loadStock();
-loadProduction();
+loadMovements();
 </script>
 </body>
 </html>

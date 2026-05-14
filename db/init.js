@@ -121,6 +121,7 @@ async function initDB() {
 
         await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS entry_type VARCHAR(20) DEFAULT 'production'`);
         await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_type  VARCHAR(20)`);
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_spec  VARCHAR(100)`);
 
         // Production ledger
         await pool.query(`
