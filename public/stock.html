@@ -290,6 +290,7 @@
 const token = localStorage.getItem("token");
 if (!token) location.href = "/login.html";
 document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+if (localStorage.getItem("userRole") !== "admin") document.querySelector('[onclick="confirmReset()"]').style.display = "none";
 function logout() { localStorage.clear(); location.href = "/login.html"; }
 const authHeaders = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + token });
 
