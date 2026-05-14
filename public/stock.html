@@ -7,92 +7,60 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .stock-table th { font-size: 12px; color: #888; font-weight: 600; text-transform: uppercase; }
+        .stock-table td { font-size: 15px; font-weight: 700; vertical-align: middle; }
+        .stock-table .item-name { font-size: 13px; font-weight: 600; color: #333; }
+        .entry-chip { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .chip-prod { background: #d1f5d3; color: #1a7c2a; }
+        .chip-cons { background: #fde8e8; color: #c0392b; }
+    </style>
 </head>
 <body>
 
 <div class="container" style="max-width:620px">
 
-    <!-- Header -->
     <div class="page-header">
         <h4><i class="bi bi-boxes me-2" style="color:#8b5e3c"></i>Stock</h4>
         <div class="d-flex align-items-center gap-2">
             <small class="text-muted" id="userLabel"></small>
-            <button class="btn btn-sm btn-outline-secondary" onclick="logout()" title="Logout">
+            <button class="btn btn-sm btn-outline-danger" onclick="confirmReset()" title="Reset Stock">
+                <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="logout()">
                 <i class="bi bi-box-arrow-right"></i>
             </button>
         </div>
     </div>
 
-    <!-- Stock levels -->
+    <!-- Stock summary table -->
     <div id="stockSpinner" class="text-center py-4 text-muted">
         <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
     </div>
-
-    <div id="stockContent" style="display:none">
-
-        <!-- Drip -->
-        <div class="card p-3 mb-3">
-            <div class="d-flex align-items-center mb-3">
-                <div class="stock-icon me-2" style="background:#d1f5d3">
-                    <i class="bi bi-droplet-fill" style="color:#1a7c2a"></i>
-                </div>
-                <div>
-                    <div class="fw-bold">Drip</div>
-                    <div class="text-muted" style="font-size:12px">Sale only · Stock tracked</div>
-                </div>
-            </div>
-            <div class="row text-center g-2">
-                <div class="col-4">
-                    <div class="stock-num" id="drip-qty">—</div>
-                    <div class="text-muted small">Quantity</div>
-                </div>
-                <div class="col-4">
-                    <div class="stock-num" id="drip-meters">—</div>
-                    <div class="text-muted small">Meters</div>
-                </div>
-                <div class="col-4">
-                    <div class="stock-num" id="drip-weight">—</div>
-                    <div class="text-muted small">Weight (kg)</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Dhana -->
-        <div class="card p-3 mb-3">
-            <div class="d-flex align-items-center mb-3">
-                <div class="stock-icon me-2" style="background:#fff3cd">
-                    <i class="bi bi-bag-fill" style="color:#8a5e00"></i>
-                </div>
-                <div>
-                    <div class="fw-bold">Dhana</div>
-                    <div class="text-muted" style="font-size:12px">Purchase & Sale · Stock tracked</div>
-                </div>
-            </div>
-            <div class="text-center py-2">
-                <div class="fw-bold mb-0" id="dhana-bags" style="font-size:52px;line-height:1;color:#1a1a1a">—</div>
-                <div class="text-muted small mt-1">Bags</div>
-            </div>
-        </div>
-
-        <!-- Scrap note -->
-        <div class="card p-3 mb-4" style="background:#f8f5f2;border:none;box-shadow:none">
-            <div class="d-flex align-items-center gap-2 text-muted">
-                <i class="bi bi-info-circle"></i>
-                <small>Scrap transactions tracked financially, not in stock.</small>
-            </div>
-        </div>
-
+    <div id="stockContent" class="card p-0 mb-4 overflow-hidden" style="display:none">
+        <table class="table table-bordered mb-0 stock-table">
+            <thead style="background:#f8f5f2">
+                <tr>
+                    <th class="ps-3">Item</th>
+                    <th class="text-center">Qty</th>
+                    <th class="text-center">Meters</th>
+                    <th class="text-center">Weight (kg)</th>
+                    <th class="text-center">Bags</th>
+                </tr>
+            </thead>
+            <tbody id="stockTableBody"></tbody>
+        </table>
     </div>
 
-    <!-- ── Production Ledger ── -->
+    <!-- Production section -->
     <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2" style="color:#8b5e3c"></i>Production</h6>
+        <h6 class="fw-bold mb-0"><i class="bi bi-person-workspace me-2" style="color:#8b5e3c"></i>Entries</h6>
         <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#prodModal" onclick="openAddProd()">
             <i class="bi bi-plus-lg me-1"></i>Add
         </button>
     </div>
 
-    <!-- Production filters -->
+    <!-- Filters -->
     <div class="filter-panel mb-3">
         <div class="row g-2 align-items-end">
             <div class="col">
@@ -101,6 +69,7 @@
                     <option value="">All</option>
                     <option value="drip">Drip</option>
                     <option value="dhana">Dhana</option>
+                    <option value="dipper">Dipper</option>
                 </select>
             </div>
             <div class="col">
@@ -120,12 +89,28 @@
     <div id="prodSpinner" class="text-center py-3 text-muted" style="display:none">
         <div class="spinner-border spinner-border-sm" style="color:#8b5e3c"></div>
     </div>
-    <div id="prodList"></div>
-    <div id="prodEmpty" class="empty-state" style="display:none">
-        <i class="bi bi-clipboard-x"></i>
-        <p>No production entries</p>
+
+    <!-- Production table -->
+    <div id="prodTableWrap" style="display:none">
+        <table class="table table-bordered table-sm mb-4" style="font-size:13px">
+            <thead style="background:#f8f5f2">
+                <tr>
+                    <th>Date</th>
+                    <th>Item</th>
+                    <th>Type</th>
+                    <th>Details</th>
+                    <th>Worker</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="prodTableBody"></tbody>
+        </table>
     </div>
 
+    <div id="prodEmpty" class="empty-state" style="display:none">
+        <i class="bi bi-clipboard-x"></i>
+        <p>No entries found</p>
+    </div>
 </div>
 
 <!-- Bottom Nav -->
@@ -142,6 +127,9 @@
     <a href="/customers.html">
         <i class="bi bi-people"></i><span>Customers</span>
     </a>
+    <a href="/accounts.html">
+        <i class="bi bi-wallet2"></i><span>Accounts</span>
+    </a>
     <a href="/stock.html" class="active">
         <i class="bi bi-boxes"></i><span>Stock</span>
     </a>
@@ -151,22 +139,45 @@
 </nav>
 <script>if (localStorage.getItem("userRole") === "admin") document.getElementById("navUsers").style.display = "";</script>
 
-<!-- ═══════════════ Add Production Modal ═══════════════ -->
+<!-- Add Entry Modal -->
 <div class="modal fade" id="prodModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="prodModalTitle">Add Production</h5>
+                <h5 class="modal-title fw-bold">Add Stock Entry</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
 
-                <!-- Item type -->
+                <!-- Item -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold small">Item <span class="text-danger">*</span></label>
                     <div class="cat-group">
-                        <button type="button" class="cat-btn active" data-pcat="drip"  onclick="onProdCatChange('drip')">Drip</button>
-                        <button type="button" class="cat-btn"        data-pcat="dhana" onclick="onProdCatChange('dhana')">Dhana</button>
+                        <button type="button" class="cat-btn active" data-pcat="drip"   onclick="onProdCatChange('drip')">Drip</button>
+                        <button type="button" class="cat-btn"        data-pcat="dhana"  onclick="onProdCatChange('dhana')">Dhana</button>
+                        <button type="button" class="cat-btn"        data-pcat="dipper" onclick="onProdCatChange('dipper')">Dipper</button>
+                    </div>
+                </div>
+
+                <!-- Entry type (dhana + dipper) -->
+                <div class="mb-3" id="entryTypeRow">
+                    <label class="form-label fw-semibold small">Entry Type</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="cat-btn flex-fill" data-etype="production" onclick="onEtypeChange('production')">
+                            <i class="bi bi-plus-circle me-1"></i>Production
+                        </button>
+                        <button type="button" class="cat-btn flex-fill active" data-etype="consumption" onclick="onEtypeChange('consumption')">
+                            <i class="bi bi-dash-circle me-1"></i>Consumption
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Drip type (drip only) -->
+                <div class="mb-3" id="dripTypeRow" style="display:none">
+                    <label class="form-label fw-semibold small">Drip Type</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="cat-btn flex-fill active" data-dtype="inline" onclick="onDtypeChange('inline')">Inline</button>
+                        <button type="button" class="cat-btn flex-fill"        data-dtype="online" onclick="onDtypeChange('online')">Online</button>
                     </div>
                 </div>
 
@@ -178,13 +189,13 @@
 
                 <!-- Shift -->
                 <div class="mb-3">
-                    <label class="form-label fw-semibold small">Shift <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold small">Shift</label>
                     <div class="d-flex gap-2">
                         <button type="button" class="cat-btn active flex-fill" data-shift="day"   onclick="onShiftChange('day')">
-                            <i class="bi bi-sun me-1"></i>Day (8am–8pm)
+                            <i class="bi bi-sun me-1"></i>Day
                         </button>
                         <button type="button" class="cat-btn flex-fill"        data-shift="night" onclick="onShiftChange('night')">
-                            <i class="bi bi-moon me-1"></i>Night (8pm–8am)
+                            <i class="bi bi-moon me-1"></i>Night
                         </button>
                     </div>
                 </div>
@@ -221,17 +232,39 @@
                     </div>
                 </div>
 
+                <!-- Dipper fields -->
+                <div id="prodDipperFields" style="display:none">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">Quantity</label>
+                        <input type="number" id="prodDipperQty" class="form-control" placeholder="0" min="0">
+                    </div>
+                </div>
+
                 <!-- Notes -->
                 <div class="mb-1">
                     <label class="form-label fw-semibold small">Notes</label>
                     <textarea id="prodNotes" class="form-control" rows="2" placeholder="Optional…"></textarea>
                 </div>
-
             </div>
             <div class="modal-footer">
                 <button class="btn btn-primary w-100 py-2 fw-semibold" onclick="saveProd()">
-                    <i class="bi bi-check-lg me-2"></i>Save Production
+                    <i class="bi bi-check-lg me-2"></i>Save Entry
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset confirm -->
+<div class="modal fade" id="resetModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:340px">
+        <div class="modal-content text-center p-4">
+            <div style="font-size:44px">⚠️</div>
+            <h5 class="fw-bold mt-2">Reset All Stock?</h5>
+            <p class="text-muted small">Sets all quantities to zero. Does <strong>not</strong> affect transactions or production history.</p>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-danger flex-grow-1" onclick="doReset()">Reset</button>
             </div>
         </div>
     </div>
@@ -243,7 +276,7 @@
         <div class="modal-content text-center p-4">
             <div style="font-size:44px">🗑️</div>
             <h5 class="fw-bold mt-2">Delete Entry?</h5>
-            <p class="text-muted small">This will reverse the stock update for this production entry.</p>
+            <p class="text-muted small">Stock will be reversed for this entry.</p>
             <div class="d-flex gap-2 mt-3">
                 <button class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn btn-danger flex-grow-1" id="confirmProdDeleteBtn">Delete</button>
@@ -258,163 +291,189 @@ const token = localStorage.getItem("token");
 if (!token) location.href = "/login.html";
 document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
 function logout() { localStorage.clear(); location.href = "/login.html"; }
-const authHeaders = () => ({
-    "Content-Type": "application/json",
-    "Authorization": "Bearer " + token
-});
+const authHeaders = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + token });
 
-/* ── Stock levels ── */
+const fmt = n => parseFloat(n) ? parseFloat(n).toLocaleString("en-IN") : "—";
+
+/* ── Stock table ── */
 async function loadStock() {
     try {
         const r = await fetch("/api/stock", { headers: authHeaders() });
         if (r.status === 401) { location.href = "/login.html"; return; }
         const data = await r.json();
 
+        const map = {};
+        data.forEach(s => { map[s.item_type] = s; });
+
+        const rows = [
+            { key: "drip",   label: "Drip",   color: "#1a7c2a", bg: "#d1f5d3", icon: "bi-droplet-fill" },
+            { key: "dhana",  label: "Dhana",  color: "#8a5e00", bg: "#fff3cd", icon: "bi-bag-fill" },
+            { key: "dipper", label: "Dipper", color: "#16a085", bg: "#d5f5f0", icon: "bi-grid-3x3-gap-fill" }
+        ];
+
+        document.getElementById("stockTableBody").innerHTML = rows.map(row => {
+            const s = map[row.key] || {};
+            return `<tr>
+                <td class="ps-3">
+                    <span class="stock-icon me-2 d-inline-flex" style="background:${row.bg};width:28px;height:28px;border-radius:8px;align-items:center;justify-content:center">
+                        <i class="bi ${row.icon}" style="color:${row.color};font-size:14px"></i>
+                    </span>
+                    <span class="item-name">${row.label}</span>
+                </td>
+                <td class="text-center">${row.key !== "dhana" ? fmt(s.quantity) : "—"}</td>
+                <td class="text-center">${row.key === "drip"  ? fmt(s.meters)   : "—"}</td>
+                <td class="text-center">${row.key === "drip"  ? fmt(s.weight)   : "—"}</td>
+                <td class="text-center">${row.key === "dhana" ? fmt(s.bags)     : "—"}</td>
+            </tr>`;
+        }).join("");
+
         document.getElementById("stockSpinner").style.display = "none";
         document.getElementById("stockContent").style.display = "";
-
-        data.forEach(s => {
-            if (s.item_type === "drip") {
-                document.getElementById("drip-qty").textContent    = parseFloat(s.quantity).toLocaleString("en-IN");
-                document.getElementById("drip-meters").textContent = parseFloat(s.meters).toLocaleString("en-IN");
-                document.getElementById("drip-weight").textContent = parseFloat(s.weight).toLocaleString("en-IN");
-            } else if (s.item_type === "dhana") {
-                document.getElementById("dhana-bags").textContent  = parseFloat(s.bags).toLocaleString("en-IN");
-            }
-        });
     } catch {
         document.getElementById("stockSpinner").style.display = "none";
-        document.getElementById("stockContent").innerHTML =
-            `<div class="text-center text-danger py-3">Failed to load stock data.</div>`;
-        document.getElementById("stockContent").style.display = "";
     }
 }
 
-/* ── Production modal helpers ── */
-function getProdCat() {
-    return document.querySelector("[data-pcat].active")?.dataset.pcat || "drip";
+/* ── Reset ── */
+function confirmReset() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("resetModal")).show();
 }
-function getShift() {
-    return document.querySelector("[data-shift].active")?.dataset.shift || "day";
+async function doReset() {
+    try {
+        const r = await fetch("/api/stock/reset", { method: "POST", headers: authHeaders() });
+        if (!r.ok) throw new Error();
+        bootstrap.Modal.getInstance(document.getElementById("resetModal")).hide();
+        loadStock();
+    } catch { alert("Reset failed."); }
 }
+
+/* ── Modal helpers ── */
+function getProdCat()  { return document.querySelector("[data-pcat].active")?.dataset.pcat   || "drip"; }
+function getShift()    { return document.querySelector("[data-shift].active")?.dataset.shift  || "day"; }
+function getEntryType(){ return document.querySelector("[data-etype].active")?.dataset.etype  || "production"; }
+function getDripType() { return document.querySelector("[data-dtype].active")?.dataset.dtype  || "inline"; }
 
 function onProdCatChange(cat) {
-    document.querySelectorAll("[data-pcat]").forEach(b =>
-        b.classList.toggle("active", b.dataset.pcat === cat)
-    );
-    document.getElementById("prodDripFields").style.display  = cat === "drip"  ? "" : "none";
-    document.getElementById("prodDhanaFields").style.display = cat === "dhana" ? "" : "none";
+    document.querySelectorAll("[data-pcat]").forEach(b => b.classList.toggle("active", b.dataset.pcat === cat));
+    document.getElementById("prodDripFields").style.display   = cat === "drip"   ? "" : "none";
+    document.getElementById("prodDhanaFields").style.display  = cat === "dhana"  ? "" : "none";
+    document.getElementById("prodDipperFields").style.display = cat === "dipper" ? "" : "none";
+    document.getElementById("dripTypeRow").style.display      = cat === "drip"   ? "" : "none";
+    // drip always production; dhana/dipper show entry type selector
+    document.getElementById("entryTypeRow").style.display     = cat === "drip"   ? "none" : "";
+    if (cat === "dipper") {
+        // default consumption for dipper
+        onEtypeChange("consumption");
+    } else if (cat === "dhana") {
+        onEtypeChange("production");
+    }
 }
 
-function onShiftChange(shift) {
-    document.querySelectorAll("[data-shift]").forEach(b =>
-        b.classList.toggle("active", b.dataset.shift === shift)
-    );
-}
+function onShiftChange(s)  { document.querySelectorAll("[data-shift]").forEach(b => b.classList.toggle("active", b.dataset.shift === s)); }
+function onEtypeChange(et) { document.querySelectorAll("[data-etype]").forEach(b => b.classList.toggle("active", b.dataset.etype === et)); }
+function onDtypeChange(dt) { document.querySelectorAll("[data-dtype]").forEach(b => b.classList.toggle("active", b.dataset.dtype === dt)); }
 
 function openAddProd() {
-    ["prodWorker","prodQty","prodMeters","prodWeight","prodBags","prodNotes"]
+    ["prodWorker","prodQty","prodMeters","prodWeight","prodBags","prodDipperQty","prodNotes"]
         .forEach(id => document.getElementById(id).value = "");
     document.getElementById("prodDate").value = new Date().toISOString().slice(0, 10);
     onProdCatChange("drip");
     onShiftChange("day");
+    onDtypeChange("inline");
 }
 
 async function saveProd() {
     const cat = getProdCat();
+    const et  = cat === "drip" ? "production" : getEntryType();
+    const qty = cat === "dipper"
+        ? (parseFloat(document.getElementById("prodDipperQty").value) || 0)
+        : (parseFloat(document.getElementById("prodQty").value) || 0);
+
     const body = {
-        item_type: cat,
-        worker:    document.getElementById("prodWorker").value.trim() || null,
-        shift:     getShift(),
-        date:      document.getElementById("prodDate").value || null,
-        quantity:  cat === "drip"  ? (parseFloat(document.getElementById("prodQty").value)    || 0) : 0,
-        meters:    cat === "drip"  ? (parseFloat(document.getElementById("prodMeters").value) || 0) : 0,
-        weight:    cat === "drip"  ? (parseFloat(document.getElementById("prodWeight").value) || 0) : 0,
-        bags:      cat === "dhana" ? (parseFloat(document.getElementById("prodBags").value)   || 0) : 0,
-        notes:     document.getElementById("prodNotes").value || null
+        item_type:  cat,
+        entry_type: et,
+        drip_type:  cat === "drip" ? getDripType() : null,
+        worker:     document.getElementById("prodWorker").value.trim() || null,
+        shift:      getShift(),
+        date:       document.getElementById("prodDate").value || null,
+        quantity:   cat !== "dhana" ? qty : 0,
+        meters:     cat === "drip" ? (parseFloat(document.getElementById("prodMeters").value) || 0) : 0,
+        weight:     cat === "drip" ? (parseFloat(document.getElementById("prodWeight").value) || 0) : 0,
+        bags:       cat === "dhana" ? (parseFloat(document.getElementById("prodBags").value)  || 0) : 0,
+        notes:      document.getElementById("prodNotes").value || null
     };
 
     try {
-        const r = await fetch("/api/production", {
-            method: "POST", headers: authHeaders(), body: JSON.stringify(body)
-        });
+        const r = await fetch("/api/production", { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
         if (!r.ok) throw new Error();
         bootstrap.Modal.getInstance(document.getElementById("prodModal")).hide();
         loadStock();
         loadProduction();
-    } catch { alert("Error saving production entry."); }
+    } catch { alert("Error saving entry."); }
 }
 
-function confirmDeleteProd(id) {
-    document.getElementById("confirmProdDeleteBtn").onclick = async () => {
-        try {
-            const r = await fetch(`/api/production/${id}`, {
-                method: "DELETE", headers: authHeaders()
-            });
-            if (!r.ok) throw new Error();
-            bootstrap.Modal.getInstance(document.getElementById("deleteProdModal")).hide();
-            loadStock();
-            loadProduction();
-        } catch { alert("Error deleting production entry."); }
-    };
-    bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteProdModal")).show();
-}
-
-/* ── Render production entry ── */
-const SHIFT_CFG = {
-    day:   { label: "Day",   icon: "bi-sun-fill",  cls: "badge-pay-in"  },
-    night: { label: "Night", icon: "bi-moon-fill", cls: "badge-pay-out" }
+/* ── Render production rows ── */
+const ITEM_CFG = {
+    drip:   { label:"Drip",   color:"#1a7c2a", bg:"#d1f5d3" },
+    dhana:  { label:"Dhana",  color:"#8a5e00", bg:"#fff3cd" },
+    dipper: { label:"Dipper", color:"#16a085", bg:"#d5f5f0" }
 };
 
-function renderProd(p) {
-    const shift = SHIFT_CFG[p.shift] || { label: p.shift, icon: "bi-circle", cls: "" };
-    const date  = new Date(p.date).toLocaleDateString("en-IN",
-        { day: "2-digit", month: "short", year: "numeric" });
+function renderProdRow(p) {
+    const cfg  = ITEM_CFG[p.item_type] || { label: p.item_type, color:"#333", bg:"#eee" };
+    const date = new Date(p.date).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" });
+    const isConsumption = p.entry_type === "consumption";
 
-    let detail = "";
+    let details = "";
     if (p.item_type === "drip") {
         const parts = [];
         if (parseFloat(p.quantity)) parts.push(parseFloat(p.quantity) + " pcs");
         if (parseFloat(p.meters))   parts.push(parseFloat(p.meters)   + " m");
         if (parseFloat(p.weight))   parts.push(parseFloat(p.weight)   + " kg");
-        detail = parts.join(" · ");
+        details = (p.drip_type ? `<strong>${p.drip_type}</strong> · ` : "") + parts.join(" · ");
     } else if (p.item_type === "dhana") {
-        detail = parseFloat(p.bags) ? parseFloat(p.bags) + " bags" : "";
+        details = parseFloat(p.bags) ? parseFloat(p.bags) + " bags" : "—";
+    } else if (p.item_type === "dipper") {
+        details = parseFloat(p.quantity) ? parseFloat(p.quantity) + " units" : "—";
     }
 
-    const itemLabel = p.item_type === "drip" ? "Drip" : "Dhana";
-    const itemColor = p.item_type === "drip" ? "#1a7c2a" : "#8a5e00";
-    const itemBg    = p.item_type === "drip" ? "#d1f5d3" : "#fff3cd";
+    const shiftIcon = p.shift === "night" ? "bi-moon-fill" : "bi-sun-fill";
+    const etChip = isConsumption
+        ? `<span class="entry-chip chip-cons"><i class="bi bi-dash-circle me-1"></i>Consume</span>`
+        : `<span class="entry-chip chip-prod"><i class="bi bi-plus-circle me-1"></i>Produce</span>`;
 
-    return `
-    <div class="card p-3 mb-2" id="prod-${p.id}">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-            <div class="d-flex align-items-center gap-2">
-                <span class="type-badge" style="background:${itemBg};color:${itemColor}">${itemLabel}</span>
-                <span class="type-badge ${shift.cls}">
-                    <i class="bi ${shift.icon}"></i>${shift.label}
-                </span>
-            </div>
-            <small class="text-muted">${date}</small>
-        </div>
-        <div class="d-flex justify-content-between align-items-end mt-1">
-            <div>
-                <div class="fw-semibold">${p.worker || "<span class='text-muted'>No worker</span>"}</div>
-                ${detail ? `<small class="text-muted">${detail}</small>` : ""}
-                ${p.notes ? `<small class="text-muted d-block mt-1">${p.notes}</small>` : ""}
-            </div>
-            <button class="btn-icon danger" title="Delete" onclick="confirmDeleteProd(${p.id})">
-                <i class="bi bi-trash" style="color:#c0392b"></i>
+    return `<tr>
+        <td>${date}<br><small class="text-muted"><i class="bi ${shiftIcon} me-1"></i>${p.shift}</small></td>
+        <td><span class="badge rounded-pill" style="background:${cfg.bg};color:${cfg.color}">${cfg.label}</span></td>
+        <td>${etChip}</td>
+        <td style="font-size:12px">${details}${p.notes ? `<br><span class="text-muted">${p.notes}</span>` : ""}</td>
+        <td style="font-size:12px">${p.worker || "<span class='text-muted'>—</span>"}</td>
+        <td class="text-center">
+            <button class="btn-icon danger" onclick="confirmDeleteProd(${p.id})">
+                <i class="bi bi-trash" style="color:#c0392b;font-size:14px"></i>
             </button>
-        </div>
-    </div>`;
+        </td>
+    </tr>`;
+}
+
+function confirmDeleteProd(id) {
+    document.getElementById("confirmProdDeleteBtn").onclick = async () => {
+        try {
+            const r = await fetch(`/api/production/${id}`, { method: "DELETE", headers: authHeaders() });
+            if (!r.ok) throw new Error();
+            bootstrap.Modal.getInstance(document.getElementById("deleteProdModal")).hide();
+            loadStock();
+            loadProduction();
+        } catch { alert("Error deleting entry."); }
+    };
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("deleteProdModal")).show();
 }
 
 /* ── Load production ── */
 async function loadProduction() {
-    document.getElementById("prodSpinner").style.display = "block";
-    document.getElementById("prodEmpty").style.display   = "none";
-    document.getElementById("prodList").innerHTML        = "";
+    document.getElementById("prodSpinner").style.display   = "block";
+    document.getElementById("prodEmpty").style.display     = "none";
+    document.getElementById("prodTableWrap").style.display = "none";
 
     try {
         const q = new URLSearchParams();
@@ -431,11 +490,12 @@ async function loadProduction() {
 
         document.getElementById("prodSpinner").style.display = "none";
         if (!list.length) { document.getElementById("prodEmpty").style.display = "block"; return; }
-        document.getElementById("prodList").innerHTML = list.map(renderProd).join("");
+        document.getElementById("prodTableBody").innerHTML   = list.map(renderProdRow).join("");
+        document.getElementById("prodTableWrap").style.display = "";
     } catch {
         document.getElementById("prodSpinner").style.display = "none";
-        document.getElementById("prodList").innerHTML =
-            `<div class="text-center text-danger py-3">Failed to load production entries.</div>`;
+        document.getElementById("prodTableWrap").innerHTML =
+            `<div class="text-center text-danger py-3">Failed to load entries.</div>`;
     }
 }
 
@@ -446,7 +506,6 @@ function resetProdFilters() {
     loadProduction();
 }
 
-/* ── Init ── */
 loadStock();
 loadProduction();
 </script>

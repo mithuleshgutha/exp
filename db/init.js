@@ -115,8 +115,12 @@ async function initDB() {
                 updated_at TIMESTAMP DEFAULT NOW()
             )
         `);
-        await pool.query(`INSERT INTO stock (item_type) VALUES ('drip')  ON CONFLICT (item_type) DO NOTHING`);
-        await pool.query(`INSERT INTO stock (item_type) VALUES ('dhana') ON CONFLICT (item_type) DO NOTHING`);
+        await pool.query(`INSERT INTO stock (item_type) VALUES ('drip')   ON CONFLICT (item_type) DO NOTHING`);
+        await pool.query(`INSERT INTO stock (item_type) VALUES ('dhana')  ON CONFLICT (item_type) DO NOTHING`);
+        await pool.query(`INSERT INTO stock (item_type) VALUES ('dipper') ON CONFLICT (item_type) DO NOTHING`);
+
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS entry_type VARCHAR(20) DEFAULT 'production'`);
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_type  VARCHAR(20)`);
 
         // Production ledger
         await pool.query(`

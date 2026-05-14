@@ -33,21 +33,24 @@ async function applyBalance(pool, type, custId, pending, paid, sign) {
 
 async function applyStock(pool, itemType, txType, qty, meters, weight, bags, sign) {
     if (!itemType) return;
-    if (itemType === "drip" && txType === "SALE") {
+    if (itemType === "drip") {
+        // PURCHASE → increase stock, SALE → decrease stock
+        const s = txType === "PURCHASE" ? sign : -sign;
         await pool.query(
-            `UPDATE stock SET
-                quantity   = quantity + $1,
-                meters     = meters   + $2,
-                weight     = weight   + $3,
-                updated_at = NOW()
-             WHERE item_type = 'drip'`,
-            [-sign * qty, -sign * meters, -sign * weight]
+            `UPDATE stock SET quantity=quantity+$1, meters=meters+$2, weight=weight+$3, updated_at=NOW() WHERE item_type='drip'`,
+            [s * qty, s * meters, s * weight]
         );
     } else if (itemType === "dhana") {
         const delta = txType === "PURCHASE" ? sign * bags : -sign * bags;
         await pool.query(
-            `UPDATE stock SET bags = bags + $1, updated_at = NOW() WHERE item_type = 'dhana'`,
+            `UPDATE stock SET bags=bags+$1, updated_at=NOW() WHERE item_type='dhana'`,
             [delta]
+        );
+    } else if (itemType === "dipper") {
+        const s = txType === "PURCHASE" ? sign : -sign;
+        await pool.query(
+            `UPDATE stock SET quantity=quantity+$1, updated_at=NOW() WHERE item_type='dipper'`,
+            [s * qty]
         );
     }
     // scrap: no stock effect

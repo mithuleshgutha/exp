@@ -12,4 +12,14 @@ router.get("/", async (req, res) => {
     }
 });
 
+router.post("/reset", async (req, res) => {
+    try {
+        await pool.query(`UPDATE stock SET quantity=0, meters=0, weight=0, bags=0, updated_at=NOW()`);
+        res.json({ success: true });
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+
 module.exports = router;

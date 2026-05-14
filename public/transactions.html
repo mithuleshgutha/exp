@@ -394,7 +394,7 @@ function getCategory() {
 }
 
 const CAT_HINTS = {
-    drip:    "Sale only — stock tracked (Qty, Meters, Weight)",
+    drip:    "Purchase & Sale — stock tracked (Qty, Meters, Weight)",
     dhana:   "Purchase & Sale — stock tracked (Bags)",
     dipper:  "Purchase & Sale — Dipper product",
     scrap:   "Purchase & Sale — no stock tracking",
@@ -412,7 +412,7 @@ function onCatChange(cat) {
     const isExpense = cat === "expense";
 
     document.getElementById("custRow").style.display      = isExpense ? "none" : "";
-    document.getElementById("saleTypeRow").style.display  = (cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
+    document.getElementById("saleTypeRow").style.display  = (cat === "drip" || cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("payTypeRow").style.display   = isPayment ? "" : "none";
     document.getElementById("accountRow").style.display    = (isPayment || isExpense) ? "" : "none";
     document.getElementById("expenseCatRow").style.display = isExpense ? "" : "none";
@@ -564,8 +564,7 @@ function buildBody() {
     const isPayment = cat === "payment";
     const isExpense = cat === "expense";
     let txType;
-    if (cat === "drip")         txType = "SALE";
-    else if (cat === "payment") txType = document.getElementById("payType").value;
+    if (cat === "payment")      txType = document.getElementById("payType").value;
     else if (cat === "expense") txType = "EXPENSE";
     else                        txType = document.getElementById("salePurchase").value;
 

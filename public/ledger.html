@@ -369,7 +369,7 @@ function onCatChange(cat) {
         b.classList.toggle("active", b.dataset.cat === cat)
     );
     const isPayment = cat === "payment";
-    document.getElementById("saleTypeRow").style.display = (cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
+    document.getElementById("saleTypeRow").style.display = (cat === "drip" || cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("payTypeRow").style.display  = isPayment ? "" : "none";
     const isExpenseCat = cat === "expense";
     document.getElementById("accountRow").style.display    = (isPayment || isExpenseCat) ? "" : "none";
@@ -490,8 +490,7 @@ async function updateTx() {
     const cat = getCategory();
     const isPayment = cat === "payment";
     let txType;
-    if (cat === "drip")         txType = "SALE";
-    else if (cat === "payment") txType = document.getElementById("payType").value;
+    if (cat === "payment")      txType = document.getElementById("payType").value;
     else                        txType = document.getElementById("salePurchase").value;
 
     const body = {
