@@ -50,10 +50,19 @@
                 <label class="form-label small fw-semibold mb-1">Type</label>
                 <select id="fType" class="form-select form-select-sm">
                     <option value="">All Types</option>
-                    <option value="SALE">Sale</option>
-                    <option value="PURCHASE">Purchase</option>
-                    <option value="PAYMENT_IN">Payment In</option>
-                    <option value="PAYMENT_OUT">Payment Out</option>
+                    <optgroup label="By Category">
+                        <option value="IT:drip">Drip</option>
+                        <option value="IT:dhana">Dhana</option>
+                        <option value="IT:dipper">Dipper</option>
+                        <option value="IT:scrap">Scrap</option>
+                    </optgroup>
+                    <optgroup label="By Type">
+                        <option value="SALE">Sale</option>
+                        <option value="PURCHASE">Purchase</option>
+                        <option value="PAYMENT_IN">Payment In</option>
+                        <option value="PAYMENT_OUT">Payment Out</option>
+                        <option value="EXPENSE">Expense</option>
+                    </optgroup>
                 </select>
             </div>
             <div class="d-flex gap-2">
@@ -88,6 +97,9 @@
     </a>
     <a href="/transactions.html" class="active">
         <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/expenses.html">
+        <i class="bi bi-cash-stack"></i><span>Expenses</span>
     </a>
     <a href="/customers.html">
         <i class="bi bi-people"></i><span>Customers</span>
@@ -812,6 +824,7 @@ async function fetchTx(params = {}) {
         if (params.start_date)    q.set("start_date",    params.start_date);
         if (params.end_date)      q.set("end_date",      params.end_date);
         if (params.type)          q.set("type",          params.type);
+        if (params.item_type)     q.set("item_type",     params.item_type);
 
         const r = await fetch("/api/transactions?" + q, { headers: authHeaders() });
         if (r.status === 401) { location.href = "/login.html"; return; }
@@ -831,11 +844,14 @@ async function fetchTx(params = {}) {
 
 /* ── Filters ── */
 function applyFilters() {
+    const raw = document.getElementById("fType").value;
+    const isItemType = raw.startsWith("IT:");
     fetchTx({
         customer_name: document.getElementById("fCustomer").value,
         start_date:    document.getElementById("fStart").value,
         end_date:      document.getElementById("fEnd").value,
-        type:          document.getElementById("fType").value
+        type:          isItemType ? "" : raw,
+        item_type:     isItemType ? raw.slice(3) : ""
     });
 }
 function resetFilters() {

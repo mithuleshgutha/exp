@@ -100,6 +100,11 @@ router.get("/", async (req, res) => {
         if (end_date)      { params.push(end_date);              query += ` AND DATE(t.created_at) <= $${params.length}`; }
         if (account_id)    { params.push(account_id);            query += ` AND t.account_id = $${params.length}`; }
 
+        // item_type filter (used by expenses page and category filter)
+        const { item_type, expense_category: expCatFilter } = req.query;
+        if (item_type)      { params.push(item_type);      query += ` AND t.item_type = $${params.length}`; }
+        if (expCatFilter)   { params.push(expCatFilter);   query += ` AND t.expense_category = $${params.length}`; }
+
         query += " ORDER BY t.created_at DESC";
 
         const result = await pool.query(query, params);

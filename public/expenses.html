@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses – OpTrack</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<div class="app-header d-flex align-items-center justify-content-between px-3 py-2">
+    <div>
+        <div class="fw-bold" style="font-size:17px"><i class="bi bi-cash-stack me-2" style="color:#8b5e3c"></i>Expenses</div>
+        <div class="text-muted" style="font-size:12px" id="userLabel"></div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-sm" style="background:#f0ebe6;color:#8b5e3c" data-bs-toggle="collapse" data-bs-target="#filters">
+            <i class="bi bi-funnel-fill"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" onclick="logout()">
+            <i class="bi bi-box-arrow-right"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="collapse" id="filters">
+    <div class="filter-panel">
+        <div class="row g-2 mb-2">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">From</label>
+                <input type="date" id="fStart" class="form-control form-control-sm">
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">To</label>
+                <input type="date" id="fEnd" class="form-control form-control-sm">
+            </div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Category</label>
+                <select id="fCat" class="form-select form-select-sm">
+                    <option value="">All Categories</option>
+                    <option value="Diesel">Diesel</option>
+                    <option value="Salary">Salary</option>
+                    <option value="Driver Fee">Driver Fee</option>
+                    <option value="Dipper">Dipper</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Account</label>
+                <select id="fAccount" class="form-select form-select-sm">
+                    <option value="">All Accounts</option>
+                </select>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary btn-sm flex-grow-1" onclick="applyFilters()">
+                <i class="bi bi-search me-1"></i>Apply
+            </button>
+            <button class="btn btn-outline-secondary btn-sm px-3" onclick="resetFilters()">Reset</button>
+        </div>
+    </div>
+</div>
+
+<!-- Total chip -->
+<div class="px-3 pb-2 pt-1" id="totalBar" style="display:none">
+    <div class="d-flex justify-content-between align-items-center px-3 py-2 rounded-3" style="background:#f8f5f2">
+        <span class="text-muted small fw-semibold">Total</span>
+        <span class="fw-bold" style="color:#c0392b" id="totalAmt"></span>
+    </div>
+</div>
+
+<div class="page-content">
+    <div id="spinner" class="text-center py-5 text-muted">
+        <div class="spinner-border" style="color:#8b5e3c"></div>
+    </div>
+    <div id="txList"></div>
+    <div id="emptyState" class="empty-state" style="display:none">
+        <i class="bi bi-cash-stack"></i>
+        <p>No expenses found</p>
+    </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+    <a href="/dashboard.html">
+        <i class="bi bi-house-fill"></i><span>Home</span>
+    </a>
+    <a href="/transactions.html">
+        <i class="bi bi-receipt"></i><span>Transactions</span>
+    </a>
+    <a href="/expenses.html" class="active">
+        <i class="bi bi-cash-stack"></i><span>Expenses</span>
+    </a>
+    <a href="/customers.html">
+        <i class="bi bi-people"></i><span>Customers</span>
+    </a>
+    <a href="/accounts.html">
+        <i class="bi bi-wallet2"></i><span>Accounts</span>
+    </a>
+    <a href="/stock.html">
+        <i class="bi bi-boxes"></i><span>Stock</span>
+    </a>
+    <a href="/users.html" id="navUsers" style="display:none">
+        <i class="bi bi-shield-lock"></i><span>Users</span>
+    </a>
+</nav>
+<script>if (localStorage.getItem("userRole") === "admin") document.getElementById("navUsers").style.display = "";</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const token = localStorage.getItem("token");
+if (!token) location.href = "/login.html";
+document.getElementById("userLabel").textContent = localStorage.getItem("userName") || "";
+function logout() { localStorage.clear(); location.href = "/login.html"; }
+const authH = () => ({ "Content-Type": "application/json", Authorization: "Bearer " + token });
+
+const CAT_COLORS = {
+    "Diesel":     "#e67e22",
+    "Salary":     "#2980b9",
+    "Driver Fee": "#8e44ad",
+    "Dipper":     "#16a085",
+    "Other":      "#7f8c8d"
+};
+
+const CAT_ICONS = {
+    "Diesel":     "bi-fuel-pump-fill",
+    "Salary":     "bi-person-fill",
+    "Driver Fee": "bi-truck",
+    "Dipper":     "bi-droplet-fill",
+    "Other":      "bi-three-dots"
+};
+
+function renderTx(t) {
+    const isDeleted = !!t.deleted_at;
+    const cat    = t.expense_category || "Other";
+    const color  = CAT_COLORS[cat] || "#7f8c8d";
+    const icon   = CAT_ICONS[cat]  || "bi-three-dots";
+    const date   = new Date(t.created_at).toLocaleDateString("en-IN",
+        { day:"2-digit", month:"short", year:"numeric" });
+    const acct   = t.account_name ? `<span class="ms-2"><i class="bi bi-wallet2 me-1"></i>${t.account_name}</span>` : "";
+
+    return `
+    <div class="card p-3 ${isDeleted ? "tx-deleted" : ""}">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+            <span class="type-badge badge-expense">
+                <i class="bi ${icon}"></i>${cat}
+            </span>
+            <small class="text-muted">${date}</small>
+        </div>
+        <div class="d-flex justify-content-between align-items-end mt-1">
+            <div class="text-muted small">${acct}${t.notes ? `<div class="mt-1">${t.notes}</div>` : ""}</div>
+            <div class="fw-bold fs-6 ms-3" style="color:#c0392b">₹${Number(t.paid_amount).toLocaleString("en-IN")}</div>
+        </div>
+        ${isDeleted ? `<div class="tx-actions"><span class="deleted-chip"><i class="bi bi-x-circle-fill me-1"></i>Deleted</span></div>` : ""}
+    </div>`;
+}
+
+async function loadAccounts() {
+    try {
+        const r = await fetch("/api/accounts", { headers: authH() });
+        if (!r.ok) return;
+        const accounts = await r.json();
+        const sel = document.getElementById("fAccount");
+        accounts.forEach(a => {
+            const opt = document.createElement("option");
+            opt.value = a.id; opt.textContent = a.name;
+            sel.appendChild(opt);
+        });
+    } catch { /* ignore */ }
+}
+
+async function fetchExpenses(params = {}) {
+    document.getElementById("spinner").style.display    = "block";
+    document.getElementById("emptyState").style.display = "none";
+    document.getElementById("txList").innerHTML         = "";
+    document.getElementById("totalBar").style.display   = "none";
+
+    try {
+        const q = new URLSearchParams({ type: "EXPENSE" });
+        if (params.start_date)       q.set("start_date",       params.start_date);
+        if (params.end_date)         q.set("end_date",         params.end_date);
+        if (params.expense_category) q.set("expense_category", params.expense_category);
+        if (params.account_id)       q.set("account_id",       params.account_id);
+
+        const r = await fetch("/api/transactions?" + q, { headers: authH() });
+        if (r.status === 401) { location.href = "/login.html"; return; }
+
+        const list = await r.json();
+        document.getElementById("spinner").style.display = "none";
+
+        if (!list.length) { document.getElementById("emptyState").style.display = "block"; return; }
+
+        // Enrich with account names (join not in current GET endpoint)
+        const acctMap = await getAccountMap();
+        list.forEach(t => { t.account_name = acctMap[t.account_id] || ""; });
+
+        const total = list.filter(t => !t.deleted_at).reduce((s, t) => s + parseFloat(t.paid_amount), 0);
+        document.getElementById("totalAmt").textContent = "₹" + total.toLocaleString("en-IN", { minimumFractionDigits: 2 });
+        document.getElementById("totalBar").style.display = "";
+
+        document.getElementById("txList").innerHTML = list.map(renderTx).join("");
+    } catch {
+        document.getElementById("spinner").style.display = "none";
+        document.getElementById("txList").innerHTML =
+            `<div class="text-center text-danger py-3">Failed to load expenses</div>`;
+    }
+}
+
+let _accountMap = null;
+async function getAccountMap() {
+    if (_accountMap) return _accountMap;
+    try {
+        const r = await fetch("/api/accounts", { headers: authH() });
+        if (!r.ok) return {};
+        const accounts = await r.json();
+        _accountMap = {};
+        accounts.forEach(a => { _accountMap[a.id] = a.name; });
+        return _accountMap;
+    } catch { return {}; }
+}
+
+function applyFilters() {
+    fetchExpenses({
+        start_date:       document.getElementById("fStart").value,
+        end_date:         document.getElementById("fEnd").value,
+        expense_category: document.getElementById("fCat").value,
+        account_id:       document.getElementById("fAccount").value
+    });
+}
+
+function resetFilters() {
+    ["fStart","fEnd"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("fCat").value     = "";
+    document.getElementById("fAccount").value = "";
+    fetchExpenses();
+}
+
+loadAccounts();
+fetchExpenses();
+</script>
+</body>
+</html>

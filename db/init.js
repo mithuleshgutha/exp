@@ -86,7 +86,7 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT NOW()
             )
         `);
-        const defaultAccounts = ['Cash','Company','Siva','Padma','Narayana swami','Vinod','Anji'];
+        const defaultAccounts = ['Cash','Company','Siva','Padma','Narayana swami','Vinod','Anji','Other'];
         for (const name of defaultAccounts) {
             await pool.query(`INSERT INTO accounts (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [name]);
         }
