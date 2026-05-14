@@ -144,9 +144,9 @@ router.get("/:id/history", async (req, res) => {
         );
 
         const current = await pool.query(
-            `SELECT t.*, c.name AS customer_name
+            `SELECT t.*, COALESCE(c.name, '') AS customer_name
              FROM transactions t
-             JOIN customers c ON t.customer_id = c.id
+             LEFT JOIN customers c ON t.customer_id = c.id
              WHERE t.id = $1`,
             [txId]
         );
@@ -219,8 +219,8 @@ router.put("/:id", async (req, res) => {
                 expense_category } = req.body;
 
         const cur = await pool.query(
-            `SELECT t.*, c.name AS customer_name
-             FROM transactions t JOIN customers c ON t.customer_id = c.id
+            `SELECT t.*, COALESCE(c.name, '') AS customer_name
+             FROM transactions t LEFT JOIN customers c ON t.customer_id = c.id
              WHERE t.id = $1 AND t.deleted_at IS NULL`,
             [txId]
         );
