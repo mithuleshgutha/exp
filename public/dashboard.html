@@ -100,11 +100,9 @@
 <div class="page-content">
 
     <!-- Period selector -->
-    <div class="d-flex gap-2 flex-wrap mb-4">
-        <span class="period-pill active" onclick="setPeriod('today',this)">Today</span>
-        <span class="period-pill" onclick="setPeriod('week',this)">This Week</span>
-        <span class="period-pill" onclick="setPeriod('month',this)">This Month</span>
-        <span class="period-pill" onclick="setPeriod('all',this)">All Time</span>
+    <div class="mb-4">
+        <select id="periodSelect" class="form-select" style="font-weight:600;color:#8b5e3c;border-color:#d6c9bd;background:#faf7f4" onchange="onPeriodChange()">
+        </select>
     </div>
 
     <!-- Net card -->
@@ -243,34 +241,35 @@
 
     const fmt = n => "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 0 });
 
-    function getDateRange(period) {
-        const today = new Date().toISOString().slice(0, 10);
-        if (period === "today") return { start_date: today, end_date: today };
-        if (period === "week") {
-            const d = new Date();
-            d.setDate(d.getDate() - d.getDay());
-            return { start_date: d.toISOString().slice(0, 10), end_date: today };
-        }
-        if (period === "month") {
-            const d = new Date();
-            const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
-            return { start_date: start, end_date: today };
-        }
-        return {};
+    async function buildMonthOptions() {
+        try {
+            const r      = await fetch("/api/transactions/months", { headers: { Authorization: `Bearer ${token}` } });
+            const months = r.ok ? await r.json() : [];
+            let html = months.map(m => {
+                const [yr, mo] = m.split("-").map(Number);
+                const label = new Date(yr, mo - 1, 1).toLocaleString("en-IN", { month: "long", year: "numeric" });
+                return `<option value="${m}">${label}</option>`;
+            }).join("");
+            html += `<option value="all">All Time</option>`;
+            return html;
+        } catch { return `<option value="all">All Time</option>`; }
     }
 
-    let currentPeriod = "today";
+    function getDateRange() {
+        const val = document.getElementById("periodSelect").value;
+        if (!val || val === "all") return {};
+        const [yr, mo] = val.split("-").map(Number);
+        const start = new Date(yr, mo - 1, 1).toISOString().slice(0, 10);
+        const end   = new Date(yr, mo, 0).toISOString().slice(0, 10);
+        return { start_date: start, end_date: end };
+    }
+
     let balanceData = null;
 
-    function setPeriod(p, el) {
-        currentPeriod = p;
-        document.querySelectorAll(".period-pill").forEach(x => x.classList.remove("active"));
-        el.classList.add("active");
-        loadSummary();
-    }
+    function onPeriodChange() { loadSummary(); }
 
     async function loadSummary() {
-        const range = getDateRange(currentPeriod);
+        const range = getDateRange();
         const params = new URLSearchParams(range).toString();
         try {
             const [txRes, balRes] = await Promise.all([
@@ -332,7 +331,10 @@
         balModal.show();
     }
 
-    loadSummary();
+    buildMonthOptions().then(html => {
+        document.getElementById("periodSelect").innerHTML = html;
+        loadSummary();
+    });
 </script>
 </body>
 </html>

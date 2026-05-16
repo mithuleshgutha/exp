@@ -63,6 +63,23 @@ const TX_WITH_EDITS = `
     LEFT JOIN customers c ON t.customer_id = c.id
 `;
 
+/* ── GET /months — distinct year-months that have transactions ── */
+router.get("/months", async (_req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT TO_CHAR(created_at, 'YYYY-MM') AS month
+            FROM transactions
+            WHERE deleted_at IS NULL
+            GROUP BY month
+            ORDER BY month DESC
+        `);
+        res.json(result.rows.map(r => r.month));
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+
 /* ── GET /summary ── */
 router.get("/summary", async (req, res) => {
     try {

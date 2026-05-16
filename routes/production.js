@@ -47,7 +47,7 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         const { item_type, worker, shift, date, quantity, meters, weight, bags, notes,
-                entry_type, drip_type, drip_spec } = req.body;
+                entry_type, drip_type, drip_spec, coating } = req.body;
         if (!item_type) return res.status(400).json({ error: "item_type required" });
 
         const qty = parseFloat(quantity) || 0;
@@ -57,11 +57,11 @@ router.post("/", async (req, res) => {
         const et  = entry_type || "production";
 
         const result = await pool.query(
-            `INSERT INTO production (item_type, worker, shift, date, quantity, meters, weight, bags, notes, entry_type, drip_type, drip_spec)
-             VALUES ($1,$2,$3,COALESCE($4::DATE,CURRENT_DATE),$5,$6,$7,$8,$9,$10,$11,$12)
+            `INSERT INTO production (item_type, worker, shift, date, quantity, meters, weight, bags, notes, entry_type, drip_type, drip_spec, coating)
+             VALUES ($1,$2,$3,COALESCE($4::DATE,CURRENT_DATE),$5,$6,$7,$8,$9,$10,$11,$12,$13)
              RETURNING *`,
             [item_type, worker || null, shift || "day", date || null,
-             qty, mts, wt, bg, notes || null, et, drip_type || null, drip_spec || null]
+             qty, mts, wt, bg, notes || null, et, drip_type || null, drip_spec || null, coating === true || coating === "true" ? true : false]
         );
 
         await applyStock(pool, item_type, qty, mts, wt, bg, +1, et);

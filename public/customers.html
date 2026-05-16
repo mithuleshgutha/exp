@@ -23,10 +23,10 @@
         </div>
     </div>
 
-    <!-- Period pills -->
-    <div class="d-flex gap-2 mb-3">
-        <span class="period-pill active" onclick="setPeriod('month',this)">This Month</span>
-        <span class="period-pill" onclick="setPeriod('all',this)">All Time</span>
+    <!-- Period selector -->
+    <div class="mb-3">
+        <select id="periodSelect" class="form-select" style="font-weight:600;color:#8b5e3c;border-color:#d6c9bd;background:#faf7f4" onchange="onPeriodChange()">
+        </select>
     </div>
 
     <!-- Search -->
@@ -129,24 +129,31 @@ const authHeaders = () => ({
 });
 
 /* ── Period ── */
-let _period = "month";
-function getMonthRange() {
-    const today = new Date().toISOString().slice(0,10);
-    const d = new Date();
-    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
-    return { start, end: today };
+async function buildMonthOptions() {
+    try {
+        const r      = await fetch("/api/transactions/months", { headers: authHeaders() });
+        const months = r.ok ? await r.json() : [];
+        let html = months.map(m => {
+            const [yr, mo] = m.split("-").map(Number);
+            const label = new Date(yr, mo - 1, 1).toLocaleString("en-IN", { month: "long", year: "numeric" });
+            return `<option value="${m}">${label}</option>`;
+        }).join("");
+        html += `<option value="all">All Time</option>`;
+        return html;
+    } catch { return `<option value="all">All Time</option>`; }
 }
-function setPeriod(p, el) {
-    _period = p;
-    document.querySelectorAll(".period-pill").forEach(x => x.classList.remove("active"));
-    el.classList.add("active");
-    renderList(allCustomers);
+function getSelectedRange() {
+    const val = document.getElementById("periodSelect").value;
+    if (!val || val === "all") return null;
+    const [yr, mo] = val.split("-").map(Number);
+    const start = new Date(yr, mo - 1, 1).toISOString().slice(0, 10);
+    const end   = new Date(yr, mo, 0).toISOString().slice(0, 10);
+    return { start, end };
 }
+function onPeriodChange() { renderList(allCustomers); }
 function ledgerUrl(id) {
-    if (_period === "month") {
-        const { start, end } = getMonthRange();
-        return `/ledger.html?id=${id}&start_date=${start}&end_date=${end}`;
-    }
+    const range = getSelectedRange();
+    if (range) return `/ledger.html?id=${id}&start_date=${range.start}&end_date=${range.end}`;
     return `/ledger.html?id=${id}`;
 }
 
@@ -239,6 +246,9 @@ async function addCustomer() {
     }
 }
 
+buildMonthOptions().then(html => {
+    document.getElementById("periodSelect").innerHTML = html;
+});
 fetchCustomers();
 </script>
 </body>

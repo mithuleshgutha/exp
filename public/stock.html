@@ -49,7 +49,7 @@
         <div class="mb-1 small fw-semibold" style="color:#1a7c2a"><i class="bi bi-droplet-fill me-1"></i>Drip</div>
         <table class="table table-bordered table-sm mb-3" style="font-size:13px">
             <thead style="background:#f0faf1">
-                <tr><th>Type</th><th>Quantity</th><th>Meters</th><th>Weight (kg)</th></tr>
+                <tr><th>Type</th><th>Coating</th><th>Quantity</th><th>Meters</th><th>Weight (kg)</th></tr>
             </thead>
             <tbody id="dripSummaryBody">
                 <tr><td colspan="4" class="text-muted text-center">—</td></tr>
@@ -184,6 +184,15 @@
                     </div>
                 </div>
 
+                <!-- Coating (drip only) -->
+                <div class="mb-3" id="coatingRow" style="display:none">
+                    <label class="form-label fw-semibold small">Coating</label>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="cat-btn flex-fill" data-coating="yes" onclick="onCoatingChange(true)">Yes</button>
+                        <button type="button" class="cat-btn flex-fill active" data-coating="no"  onclick="onCoatingChange(false)">No</button>
+                    </div>
+                </div>
+
                 <!-- Worker -->
                 <div class="mb-3">
                     <label class="form-label fw-semibold small">Worker Name</label>
@@ -315,15 +324,16 @@ async function loadStock() {
 
         // Compute breakdowns from production entries
         const dhana = { purchase: 0, production: 0, consumption: 0 };
-        const dripTypes = {};   // key: drip_type|meters|weight  → summed quantity
+        const dripTypes = {};   // key: drip_type|meters|weight|coating  → summed quantity
         prods.forEach(p => {
             if (p.item_type === "drip") {
-                const dt     = p.drip_type || "inline";
-                const meters = parseFloat(p.meters) || 0;
-                const weight = parseFloat(p.weight) || 0;
-                const key    = `${dt}|${meters}|${weight}`;
-                const sign   = (p.entry_type === "consumption") ? -1 : 1;
-                if (!dripTypes[key]) dripTypes[key] = { drip_type: dt, meters, weight, qty: 0 };
+                const dt      = p.drip_type || "inline";
+                const meters  = parseFloat(p.meters) || 0;
+                const weight  = parseFloat(p.weight) || 0;
+                const coating = p.coating === true || p.coating === "true";
+                const key     = `${dt}|${meters}|${weight}|${coating}`;
+                const sign    = (p.entry_type === "consumption") ? -1 : 1;
+                if (!dripTypes[key]) dripTypes[key] = { drip_type: dt, meters, weight, coating, qty: 0 };
                 dripTypes[key].qty += sign * (parseFloat(p.quantity) || 0);
             } else if (p.item_type === "dhana") {
                 const et = p.entry_type || "production";
@@ -345,14 +355,18 @@ async function loadStock() {
                 const color = r.drip_type === "online" ? "#1565c0" : "#1a7c2a";
                 const bg    = r.drip_type === "online" ? "#dbeafe" : "#d1f5d3";
                 const label = r.drip_type.charAt(0).toUpperCase() + r.drip_type.slice(1);
+                const coatingBadge = r.coating
+                    ? `<span class="badge rounded-pill" style="background:#fef9c3;color:#854d0e;font-size:11px">Yes</span>`
+                    : `<span class="text-muted" style="font-size:12px">No</span>`;
                 return `<tr>
                     <td><span class="badge rounded-pill" style="background:${bg};color:${color};font-size:11px">${label}</span></td>
+                    <td>${coatingBadge}</td>
                     <td>${fmt(r.qty)}</td>
                     <td>${fmt(r.meters)}</td>
                     <td>${fmt(r.weight)}</td>
                 </tr>`;
             }).join("")
-            : `<tr><td colspan="4" class="text-muted text-center">—</td></tr>`;
+            : `<tr><td colspan="5" class="text-muted text-center">—</td></tr>`;
         document.getElementById("dhanaSummaryRow").innerHTML =
             `<td>${fmt(dhana.purchase)}</td><td>${fmt(dhana.production)}</td><td>${fmt(dhana.consumption)}</td><td class="fw-bold">${fmt(h.bags)}</td>`;
         document.getElementById("dipperSummaryRow").innerHTML =
@@ -390,15 +404,18 @@ function onProdCatChange(cat) {
     document.getElementById("prodDhanaFields").style.display  = cat === "dhana"  ? "" : "none";
     document.getElementById("prodDipperFields").style.display = cat === "dipper" ? "" : "none";
     document.getElementById("dripTypeRow").style.display      = cat === "drip"   ? "" : "none";
+    document.getElementById("coatingRow").style.display       = cat === "drip"   ? "" : "none";
     document.getElementById("entryTypeRow").style.display     = cat === "drip"   ? "none" : "";
     document.querySelector("[data-etype='purchase']").style.display = cat === "dipper" ? "none" : "";
     if (cat === "dipper") onEtypeChange("consumption");
     else if (cat === "dhana") onEtypeChange("production");
 }
 
-function onShiftChange(s)  { document.querySelectorAll("[data-shift]").forEach(b => b.classList.toggle("active", b.dataset.shift === s)); }
-function onEtypeChange(et) { document.querySelectorAll("[data-etype]").forEach(b => b.classList.toggle("active", b.dataset.etype === et)); }
-function onDtypeChange(dt) { document.querySelectorAll("[data-dtype]").forEach(b => b.classList.toggle("active", b.dataset.dtype === dt)); }
+function onShiftChange(s)   { document.querySelectorAll("[data-shift]").forEach(b => b.classList.toggle("active", b.dataset.shift === s)); }
+function onEtypeChange(et)  { document.querySelectorAll("[data-etype]").forEach(b => b.classList.toggle("active", b.dataset.etype === et)); }
+function onDtypeChange(dt)  { document.querySelectorAll("[data-dtype]").forEach(b => b.classList.toggle("active", b.dataset.dtype === dt)); }
+function onCoatingChange(v) { document.querySelectorAll("[data-coating]").forEach(b => b.classList.toggle("active", (b.dataset.coating === "yes") === v)); }
+function getCoating()       { return document.querySelector("[data-coating].active")?.dataset.coating === "yes"; }
 
 function openAddProd() {
     ["prodWorker","prodQty","prodMeters","prodWeight","prodBags","prodDipperQty","prodNotes"]
@@ -407,6 +424,7 @@ function openAddProd() {
     onProdCatChange("drip");
     onShiftChange("day");
     onDtypeChange("inline");
+    onCoatingChange(false);
 }
 
 async function saveProd() {
@@ -419,6 +437,7 @@ async function saveProd() {
         item_type:  cat,
         entry_type: et,
         drip_type:  cat === "drip" ? getDripType() : null,
+        coating:    cat === "drip" ? getCoating()  : false,
         worker:     document.getElementById("prodWorker").value.trim() || null,
         shift:      getShift(),
         date:       document.getElementById("prodDate").value || null,
@@ -477,6 +496,7 @@ function renderMovement(m) {
         if (parseFloat(m.meters))   parts.push(parseFloat(m.meters)   + " m");
         if (parseFloat(m.weight))   parts.push(parseFloat(m.weight)   + " kg");
         if (m.drip_type) parts.unshift(`<strong>${m.drip_type}${m.drip_spec ? ' ' + m.drip_spec : ''}</strong>`);
+        if (m.coating)   parts.push(`<span style="color:#854d0e;font-size:11px">coated</span>`);
         details = parts.join(" · ");
     } else if (m.item_type === "dhana") {
         details = parseFloat(m.bags) ? parseFloat(m.bags) + " bags" : "—";

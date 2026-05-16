@@ -42,6 +42,7 @@ router.get("/movements", async (req, res) => {
                 p.entry_type       AS movement_type,
                 p.quantity, p.meters, p.weight, p.bags,
                 p.worker, p.notes, p.drip_type,
+                COALESCE(p.coating, FALSE) AS coating,
                 p.id               AS entry_id,
                 NULL::integer      AS tx_id,
                 NULL::text         AS customer_name
@@ -57,6 +58,7 @@ router.get("/movements", async (req, res) => {
                 t.quantity, t.meters, t.weight, t.bags,
                 NULL                              AS worker,
                 t.notes, NULL                     AS drip_type,
+                FALSE                             AS coating,
                 NULL::integer                     AS entry_id,
                 t.id                              AS tx_id,
                 COALESCE(c.name,'')               AS customer_name
