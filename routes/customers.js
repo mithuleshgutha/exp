@@ -80,6 +80,32 @@ router.get("/balances", async (_req, res) => {
     }
 });
 
+// PATCH opening balance — recalculates current_balance preserving transaction effects
+router.patch("/:id/opening-balance", async (req, res) => {
+    try {
+        const id     = parseInt(req.params.id);
+        const newOB  = parseFloat(req.body.opening_balance);
+        if (isNaN(newOB)) return res.status(400).json({ error: "opening_balance required" });
+
+        const cur = await pool.query("SELECT opening_balance, current_balance FROM customers WHERE id=$1", [id]);
+        if (!cur.rows.length) return res.status(404).json({ error: "Not found" });
+
+        const oldOB     = parseFloat(cur.rows[0].opening_balance) || 0;
+        const oldCurrent = parseFloat(cur.rows[0].current_balance) || 0;
+        const txEffect  = oldCurrent - oldOB;          // running tx delta preserved
+        const newCurrent = newOB + txEffect;
+
+        const result = await pool.query(
+            `UPDATE customers SET opening_balance=$1, current_balance=$2 WHERE id=$3 RETURNING *`,
+            [newOB, newCurrent, id]
+        );
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+
 // GET SINGLE CUSTOMER (with transaction totals)
 router.get("/:id", async (req, res) => {
     try {
