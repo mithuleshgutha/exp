@@ -144,7 +144,7 @@
     <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold">Add Stock Entry</h5>
+                <h5 class="modal-title fw-bold" id="prodModalTitle">Add Stock Entry</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -315,7 +315,7 @@ async function loadStock() {
             fetch("/api/stock",      { headers: authHeaders() }),
             fetch("/api/production", { headers: authHeaders() })
         ]);
-        if (stockRes.status === 401) { location.href = "/login.html"; return; }
+        if (stockRes.status === 401) { localStorage.clear(); location.href = "/login.html"; return; }
         const stockData = await stockRes.json();
         const prods     = prodRes.ok ? await prodRes.json() : [];
 
@@ -417,7 +417,11 @@ function onDtypeChange(dt)  { document.querySelectorAll("[data-dtype]").forEach(
 function onCoatingChange(v) { document.querySelectorAll("[data-coating]").forEach(b => b.classList.toggle("active", (b.dataset.coating === "yes") === v)); }
 function getCoating()       { return document.querySelector("[data-coating].active")?.dataset.coating === "yes"; }
 
+let _editingProdId = null;
+
 function openAddProd() {
+    _editingProdId = null;
+    document.getElementById("prodModalTitle").textContent = "Add Stock Entry";
     ["prodWorker","prodQty","prodMeters","prodWeight","prodBags","prodDipperQty","prodNotes"]
         .forEach(id => document.getElementById(id).value = "");
     document.getElementById("prodDate").value = new Date().toISOString().slice(0, 10);
@@ -425,6 +429,43 @@ function openAddProd() {
     onShiftChange("day");
     onDtypeChange("inline");
     onCoatingChange(false);
+}
+
+async function openEditProd(id) {
+    try {
+        const r = await fetch("/api/production", { headers: authHeaders() });
+        const all = await r.json();
+        const p = all.find(x => x.id === id);
+        if (!p) { alert("Entry not found."); return; }
+
+        _editingProdId = id;
+        document.getElementById("prodModalTitle").textContent = "Edit Stock Entry";
+
+        onProdCatChange(p.item_type);
+        if (p.item_type === "drip") {
+            onDtypeChange(p.drip_type || "inline");
+            onCoatingChange(p.coating === true || p.coating === "true");
+        } else {
+            onEtypeChange(p.entry_type || "production");
+        }
+        onShiftChange(p.shift || "day");
+
+        document.getElementById("prodDate").value   = p.date ? p.date.slice(0,10) : "";
+        document.getElementById("prodWorker").value = p.worker || "";
+        document.getElementById("prodNotes").value  = p.notes  || "";
+
+        if (p.item_type === "drip") {
+            document.getElementById("prodQty").value    = parseFloat(p.quantity) || "";
+            document.getElementById("prodMeters").value = parseFloat(p.meters)   || "";
+            document.getElementById("prodWeight").value = parseFloat(p.weight)   || "";
+        } else if (p.item_type === "dhana") {
+            document.getElementById("prodBags").value   = parseFloat(p.bags)     || "";
+        } else if (p.item_type === "dipper") {
+            document.getElementById("prodDipperQty").value = parseFloat(p.quantity) || "";
+        }
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("prodModal")).show();
+    } catch { alert("Failed to load entry."); }
 }
 
 async function saveProd() {
@@ -448,7 +489,9 @@ async function saveProd() {
         notes:      document.getElementById("prodNotes").value || null
     };
     try {
-        const r = await fetch("/api/production", { method: "POST", headers: authHeaders(), body: JSON.stringify(body) });
+        const url    = _editingProdId ? `/api/production/${_editingProdId}` : "/api/production";
+        const method = _editingProdId ? "PUT" : "POST";
+        const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
         if (!r.ok) throw new Error();
         bootstrap.Modal.getInstance(document.getElementById("prodModal")).hide();
         loadStock();
@@ -508,7 +551,10 @@ function renderMovement(m) {
     const party = m.customer_name || m.worker || "<span class='text-muted'>—</span>";
 
     const deleteCell = m.entry_id
-        ? `<td class="text-center"><button class="btn-icon danger" onclick="confirmDeleteProd(${m.entry_id})"><i class="bi bi-trash" style="color:#c0392b;font-size:14px"></i></button></td>`
+        ? `<td class="text-center" style="white-space:nowrap">
+               <button class="btn-icon" onclick="openEditProd(${m.entry_id})" style="margin-right:4px"><i class="bi bi-pencil" style="color:#8b5e3c;font-size:13px"></i></button>
+               <button class="btn-icon danger" onclick="confirmDeleteProd(${m.entry_id})"><i class="bi bi-trash" style="color:#c0392b;font-size:14px"></i></button>
+           </td>`
         : `<td></td>`;
 
     return `<tr>
@@ -532,7 +578,7 @@ async function loadMovements() {
     if (ft) q.set("date_to",   ft);
     try {
         const r = await fetch("/api/stock/movements?" + q, { headers: authHeaders() });
-        if (r.status === 401) { location.href = "/login.html"; return; }
+        if (r.status === 401) { localStorage.clear(); location.href = "/login.html"; return; }
         const list = await r.json();
         document.getElementById("mvSpinner").style.display = "none";
         if (!list.length) { document.getElementById("mvEmpty").style.display = "block"; return; }

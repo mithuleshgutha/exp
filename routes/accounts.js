@@ -2,18 +2,18 @@ const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/db");
 
+const ACCT_SELECT = `
+    SELECT a.id, a.name, a.opening_balance, a.created_at,
+        COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_IN'  AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_in,
+        COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_OUT' AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out,
+        COALESCE(SUM(CASE WHEN t.transaction_type='EXPENSE'     AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_expense
+    FROM accounts a
+    LEFT JOIN transactions t ON t.account_id = a.id
+`;
+
 router.get("/", async (_req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT a.id, a.name, a.created_at,
-                COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_IN'  AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_in,
-                COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_OUT' AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out,
-                COALESCE(SUM(CASE WHEN t.transaction_type='EXPENSE'     AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_expense
-            FROM accounts a
-            LEFT JOIN transactions t ON t.account_id = a.id
-            GROUP BY a.id
-            ORDER BY a.name ASC
-        `);
+        const result = await pool.query(ACCT_SELECT + " GROUP BY a.id ORDER BY a.name ASC");
         res.json(result.rows);
     } catch (err) {
         console.log(err.message);
@@ -23,16 +23,23 @@ router.get("/", async (_req, res) => {
 
 router.get("/:id", async (req, res) => {
     try {
-        const result = await pool.query(`
-            SELECT a.id, a.name, a.created_at,
-                COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_IN'  AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_in,
-                COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_OUT' AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out,
-                COALESCE(SUM(CASE WHEN t.transaction_type='EXPENSE'     AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_expense
-            FROM accounts a
-            LEFT JOIN transactions t ON t.account_id = a.id
-            WHERE a.id = $1
-            GROUP BY a.id
-        `, [req.params.id]);
+        const result = await pool.query(ACCT_SELECT + " WHERE a.id = $1 GROUP BY a.id", [req.params.id]);
+        if (!result.rows.length) return res.status(404).json({ error: "Not found" });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+
+router.patch("/:id/opening-balance", async (req, res) => {
+    try {
+        const ob = parseFloat(req.body.opening_balance);
+        if (isNaN(ob)) return res.status(400).json({ error: "opening_balance required" });
+        const result = await pool.query(
+            "UPDATE accounts SET opening_balance=$1 WHERE id=$2 RETURNING *",
+            [ob, req.params.id]
+        );
         if (!result.rows.length) return res.status(404).json({ error: "Not found" });
         res.json(result.rows[0]);
     } catch (err) {

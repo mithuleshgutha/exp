@@ -276,7 +276,7 @@
                 fetch(`/api/transactions/summary${params ? "?" + params : ""}`, { headers: { Authorization: `Bearer ${token}` } }),
                 fetch(`/api/customers/balances`, { headers: { Authorization: `Bearer ${token}` } })
             ]);
-            if (!txRes.ok) { location.href = "/login.html"; return; }
+            if (!txRes.ok) { localStorage.clear(); location.href = "/login.html"; return; }
 
             const d   = await txRes.json();
             balanceData = await balRes.json();

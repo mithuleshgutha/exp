@@ -72,6 +72,47 @@ router.post("/", async (req, res) => {
     }
 });
 
+/* ── PUT /:id ── */
+router.put("/:id", async (req, res) => {
+    try {
+        const id  = parseInt(req.params.id);
+        const cur = await pool.query("SELECT * FROM production WHERE id = $1", [id]);
+        if (!cur.rows.length) return res.status(404).json({ error: "Not found" });
+        const old = cur.rows[0];
+
+        const { item_type, worker, shift, date, quantity, meters, weight, bags, notes,
+                entry_type, drip_type, drip_spec, coating } = req.body;
+
+        const qty = parseFloat(quantity) || 0;
+        const mts = parseFloat(meters)   || 0;
+        const wt  = parseFloat(weight)   || 0;
+        const bg  = parseFloat(bags)     || 0;
+        const et  = entry_type || old.entry_type || "production";
+
+        // reverse old stock effect, apply new
+        await applyStock(pool, old.item_type,
+            parseFloat(old.quantity), parseFloat(old.meters), parseFloat(old.weight), parseFloat(old.bags),
+            -1, old.entry_type || "production");
+
+        const result = await pool.query(
+            `UPDATE production SET item_type=$1, worker=$2, shift=$3, date=COALESCE($4::DATE,date),
+             quantity=$5, meters=$6, weight=$7, bags=$8, notes=$9,
+             entry_type=$10, drip_type=$11, drip_spec=$12, coating=$13
+             WHERE id=$14 RETURNING *`,
+            [item_type || old.item_type, worker || null, shift || old.shift, date || null,
+             qty, mts, wt, bg, notes || null,
+             et, drip_type || null, drip_spec || null,
+             coating === true || coating === "true" ? true : false, id]
+        );
+
+        await applyStock(pool, result.rows[0].item_type, qty, mts, wt, bg, +1, et);
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.log(err.message);
+        res.status(500).send("Server Error");
+    }
+});
+
 /* ── DELETE /:id ── */
 router.delete("/:id", async (req, res) => {
     try {

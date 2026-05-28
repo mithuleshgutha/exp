@@ -207,7 +207,7 @@
     async function loadUsers() {
         try {
             const res = await fetch("/api/users", { headers: { Authorization: `Bearer ${token}` } });
-            if (!res.ok) { location.href = "/login.html"; return; }
+            if (!res.ok) { localStorage.clear(); location.href = "/login.html"; return; }
             renderUsers(await res.json());
         } catch { document.getElementById("userList").innerHTML = `<div class="text-danger text-center py-4">Failed to load users.</div>`; }
     }

@@ -194,7 +194,7 @@ async function fetchExpenses(params = {}) {
         if (params.account_id)       q.set("account_id",       params.account_id);
 
         const r = await fetch("/api/transactions?" + q, { headers: authH() });
-        if (r.status === 401) { location.href = "/login.html"; return; }
+        if (r.status === 401) { localStorage.clear(); location.href = "/login.html"; return; }
 
         const list = await r.json();
         document.getElementById("spinner").style.display = "none";

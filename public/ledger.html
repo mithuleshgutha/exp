@@ -325,7 +325,7 @@ let deletingId = null;
 async function loadCustomer() {
     try {
         const r = await fetch(`/api/customers/${customerId}`, { headers: authHeaders() });
-        if (r.status === 401) { location.href = "/login.html"; return; }
+        if (r.status === 401) { localStorage.clear(); location.href = "/login.html"; return; }
         if (!r.ok) { location.href = "/customers.html"; return; }
         const c = await r.json();
 
@@ -763,7 +763,7 @@ async function loadLedger() {
             url += `?start_date=${start}&end_date=${end}`;
         }
         const r = await fetch(url, { headers: authHeaders() });
-        if (r.status === 401) { location.href = "/login.html"; return; }
+        if (r.status === 401) { localStorage.clear(); location.href = "/login.html"; return; }
 
         const list = await r.json();
         document.getElementById("spinner").style.display = "none";

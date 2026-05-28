@@ -81,11 +81,13 @@ async function initDB() {
         // Accounts table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS accounts (
-                id         SERIAL PRIMARY KEY,
-                name       VARCHAR(100) NOT NULL UNIQUE,
-                created_at TIMESTAMP DEFAULT NOW()
+                id               SERIAL PRIMARY KEY,
+                name             VARCHAR(100) NOT NULL UNIQUE,
+                opening_balance  NUMERIC(14,2) DEFAULT 0,
+                created_at       TIMESTAMP DEFAULT NOW()
             )
         `);
+        await pool.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS opening_balance NUMERIC(14,2) DEFAULT 0`);
         const defaultAccounts = ['Cash','Company','Siva','Padma','Narayana swami','Vinod','Anji','Other'];
         for (const name of defaultAccounts) {
             await pool.query(`INSERT INTO accounts (name) VALUES ($1) ON CONFLICT (name) DO NOTHING`, [name]);
