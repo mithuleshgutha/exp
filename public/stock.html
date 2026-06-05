@@ -273,7 +273,7 @@
         <div class="modal-content text-center p-4">
             <div style="font-size:44px">⚠️</div>
             <h5 class="fw-bold mt-2">Reset All Stock?</h5>
-            <p class="text-muted small">Sets all quantities to zero. Does <strong>not</strong> affect transactions or production history.</p>
+            <p class="text-muted small">Sets all quantities to zero and clears all production entries. Transactions are <strong>not</strong> affected.</p>
             <div class="d-flex gap-2 mt-3">
                 <button class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancel</button>
                 <button class="btn btn-danger flex-grow-1" onclick="doReset()">Reset</button>
@@ -389,6 +389,7 @@ async function doReset() {
         if (!r.ok) throw new Error();
         bootstrap.Modal.getInstance(document.getElementById("resetModal")).hide();
         loadStock();
+        loadMovements();
     } catch { alert("Reset failed."); }
 }
 

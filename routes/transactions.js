@@ -125,7 +125,7 @@ router.get("/", async (req, res) => {
         if (item_type)      { params.push(item_type);      query += ` AND t.item_type = $${params.length}`; }
         if (expCatFilter)   { params.push(expCatFilter);   query += ` AND t.expense_category = $${params.length}`; }
 
-        query += " ORDER BY t.created_at DESC";
+        query += " ORDER BY DATE(t.created_at) DESC, COALESCE(t.updated_at, t.created_at) DESC";
 
         const result = await pool.query(query, params);
         res.json(result.rows);
@@ -143,7 +143,7 @@ router.get("/customer/:id", async (req, res) => {
         const params = [req.params.id];
         if (start_date) { params.push(start_date); query += ` AND DATE(t.created_at) >= $${params.length}`; }
         if (end_date)   { params.push(end_date);   query += ` AND DATE(t.created_at) <= $${params.length}`; }
-        query += " ORDER BY t.created_at DESC";
+        query += " ORDER BY DATE(t.created_at) DESC, COALESCE(t.updated_at, t.created_at) DESC";
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (err) {
@@ -293,7 +293,8 @@ router.put("/:id", async (req, res) => {
                 created_at       = COALESCE($9::TIMESTAMP, created_at),
                 item_type        = $10, meters           = $11,
                 weight           = $12, bags             = $13,
-                account_id       = $15, expense_category = $16
+                account_id       = $15, expense_category = $16,
+                updated_at       = NOW()
              WHERE id = $14`,
             [newCustId, transaction_type,
              qty, rt, total, paid, pending, notes || null, txDate || null,

@@ -99,6 +99,9 @@ async function initDB() {
         // Expense category column
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expense_category VARCHAR(50)`);
 
+        // Track last edit time for sort ordering
+        await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP`);
+
         // Stock tracking columns on transactions
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS item_type VARCHAR(20)`);
         await pool.query(`ALTER TABLE transactions ADD COLUMN IF NOT EXISTS meters NUMERIC(14,2) DEFAULT 0`);

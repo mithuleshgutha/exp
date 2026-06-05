@@ -80,6 +80,7 @@ router.post("/reset", async (req, res) => {
     if (req.user?.role !== "admin") return res.status(403).json({ error: "Admin only" });
     try {
         await pool.query(`UPDATE stock SET quantity=0, meters=0, weight=0, bags=0, updated_at=NOW()`);
+        await pool.query(`DELETE FROM production`);
         res.json({ success: true });
     } catch (err) {
         console.log(err.message);
