@@ -146,9 +146,9 @@ function getSelectedRange() {
     const val = document.getElementById("periodSelect").value;
     if (!val || val === "all") return null;
     const [yr, mo] = val.split("-").map(Number);
-    const start = new Date(yr, mo - 1, 1).toISOString().slice(0, 10);
-    const end   = new Date(yr, mo, 0).toISOString().slice(0, 10);
-    return { start, end };
+    const pad     = n => String(n).padStart(2, "0");
+    const lastDay = new Date(yr, mo, 0).getDate();
+    return { start: `${yr}-${pad(mo)}-01`, end: `${yr}-${pad(mo)}-${pad(lastDay)}` };
 }
 function onPeriodChange() { renderList(allCustomers); }
 function ledgerUrl(id) {

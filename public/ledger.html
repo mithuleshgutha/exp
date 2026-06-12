@@ -738,9 +738,10 @@ function getMonthRange() {
     const s = _urlParams.get("start_date");
     const e = _urlParams.get("end_date");
     if (s && e) return { start: s, end: e };
-    const today = new Date().toISOString().slice(0,10);
-    const d = new Date();
-    const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0,10);
+    const d   = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    const today = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const start = `${d.getFullYear()}-${pad(d.getMonth()+1)}-01`;
     return { start, end: today };
 }
 function setPeriod(p, el) {

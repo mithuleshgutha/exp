@@ -311,34 +311,43 @@ const fmt = n => parseFloat(n) ? parseFloat(n).toLocaleString("en-IN") : "—";
 /* ── Section 1: Total Stock ── */
 async function loadStock() {
     try {
-        const [stockRes, prodRes] = await Promise.all([
-            fetch("/api/stock",      { headers: authHeaders() }),
-            fetch("/api/production", { headers: authHeaders() })
+        const resetFrom = localStorage.getItem("stockResetDate") || "2026-06-07";
+        const [stockRes, prodRes, movRes] = await Promise.all([
+            fetch("/api/stock",                                           { headers: authHeaders() }),
+            fetch(`/api/production?date_from=${resetFrom}`,              { headers: authHeaders() }),
+            fetch(`/api/stock/movements?date_from=${resetFrom}`,         { headers: authHeaders() })
         ]);
         if (stockRes.status === 401) { localStorage.clear(); location.href = "/login.html"; return; }
         const stockData = await stockRes.json();
         const prods     = prodRes.ok ? await prodRes.json() : [];
+        const movements = movRes.ok  ? await movRes.json() : [];
 
         const map = {};
         stockData.forEach(s => { map[s.item_type] = s; });
 
-        // Compute breakdowns from production entries
-        const dhana = { purchase: 0, production: 0, consumption: 0 };
-        const dripTypes = {};   // key: drip_type|meters|weight|coating  → summed quantity
+        // Drip: computed from production entries (per-spec grouping)
+        const dripTypes = {};
         prods.forEach(p => {
-            if (p.item_type === "drip") {
-                const dt      = p.drip_type || "inline";
-                const meters  = parseFloat(p.meters) || 0;
-                const weight  = parseFloat(p.weight) || 0;
-                const coating = p.coating === true || p.coating === "true";
-                const key     = `${dt}|${meters}|${weight}|${coating}`;
-                const sign    = (p.entry_type === "consumption") ? -1 : 1;
-                if (!dripTypes[key]) dripTypes[key] = { drip_type: dt, meters, weight, coating, qty: 0 };
-                dripTypes[key].qty += sign * (parseFloat(p.quantity) || 0);
-            } else if (p.item_type === "dhana") {
-                const et = p.entry_type || "production";
-                dhana[et] = (dhana[et] || 0) + (parseFloat(p.bags) || 0);
-            }
+            if (p.item_type !== "drip") return;
+            const dt      = p.drip_type || "inline";
+            const meters  = parseFloat(p.meters) || 0;
+            const weight  = parseFloat(p.weight) || 0;
+            const coating = p.coating === true || p.coating === "true";
+            const key     = `${dt}|${meters}|${weight}|${coating}`;
+            const sign    = (p.entry_type === "consumption") ? -1 : 1;
+            if (!dripTypes[key]) dripTypes[key] = { drip_type: dt, meters, weight, coating, qty: 0 };
+            dripTypes[key].qty += sign * (parseFloat(p.quantity) || 0);
+        });
+
+        // Dhana: computed from ALL movements (production entries + transactions)
+        const dhana = { purchase: 0, production: 0, consumption: 0 };
+        movements.forEach(m => {
+            if (m.item_type !== "dhana") return;
+            const bags = parseFloat(m.bags) || 0;
+            const mt   = m.movement_type;
+            if (mt === "purchase")    dhana.purchase    += bags;
+            else if (mt === "production") dhana.production  += bags;
+            else if (mt === "consumption" || mt === "sale") dhana.consumption += bags;
         });
 
         const h = map["dhana"]  || {};
@@ -387,6 +396,9 @@ async function doReset() {
     try {
         const r = await fetch("/api/stock/reset", { method: "POST", headers: authHeaders() });
         if (!r.ok) throw new Error();
+        const today = new Date();
+        const pad = n => String(n).padStart(2, "0");
+        localStorage.setItem("stockResetDate", `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`);
         bootstrap.Modal.getInstance(document.getElementById("resetModal")).hide();
         loadStock();
         loadMovements();

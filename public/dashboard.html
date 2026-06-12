@@ -259,9 +259,9 @@
         const val = document.getElementById("periodSelect").value;
         if (!val || val === "all") return {};
         const [yr, mo] = val.split("-").map(Number);
-        const start = new Date(yr, mo - 1, 1).toISOString().slice(0, 10);
-        const end   = new Date(yr, mo, 0).toISOString().slice(0, 10);
-        return { start_date: start, end_date: end };
+        const pad     = n => String(n).padStart(2, "0");
+        const lastDay = new Date(yr, mo, 0).getDate();
+        return { start_date: `${yr}-${pad(mo)}-01`, end_date: `${yr}-${pad(mo)}-${pad(lastDay)}` };
     }
 
     let balanceData = null;
