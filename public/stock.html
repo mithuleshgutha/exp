@@ -339,6 +339,23 @@ async function loadStock() {
             dripTypes[key].qty += sign * (parseFloat(p.quantity) || 0);
         });
 
+        // Fold drip SALE/PURCHASE transactions into the per-spec breakdown (matched by meters+weight).
+        // Transactions carry no drip_type/coating, so match on dimensions; unmatched → own row.
+        movements.forEach(m => {
+            if (m.item_type !== "drip" || m.source !== "transaction") return;
+            const meters = parseFloat(m.meters)   || 0;
+            const weight = parseFloat(m.weight)   || 0;
+            const qty    = parseFloat(m.quantity) || 0;
+            const sign   = m.movement_type === "sale" ? -1 : (m.movement_type === "purchase" ? 1 : 0);
+            if (!sign || !qty) return;
+            let row = Object.values(dripTypes).find(d => d.meters === meters && d.weight === weight);
+            if (!row) {
+                const key = `tx|${meters}|${weight}`;
+                row = dripTypes[key] = { drip_type: "inline", meters, weight, coating: false, qty: 0 };
+            }
+            row.qty += sign * qty;
+        });
+
         // Dhana: computed from ALL movements (production entries + transactions)
         const dhana = { purchase: 0, production: 0, consumption: 0 };
         movements.forEach(m => {

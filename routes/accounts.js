@@ -4,9 +4,9 @@ const pool    = require("../db/db");
 
 const ACCT_SELECT = `
     SELECT a.id, a.name, a.opening_balance, a.created_at,
-        COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_IN'  AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_in,
-        COALESCE(SUM(CASE WHEN t.transaction_type='PAYMENT_OUT' AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out,
-        COALESCE(SUM(CASE WHEN t.transaction_type='EXPENSE'     AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_expense
+        COALESCE(SUM(CASE WHEN t.transaction_type IN ('PAYMENT_IN','SALE')      AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_in,
+        COALESCE(SUM(CASE WHEN t.transaction_type IN ('PAYMENT_OUT','PURCHASE') AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_out,
+        COALESCE(SUM(CASE WHEN t.transaction_type='EXPENSE'                     AND t.deleted_at IS NULL THEN t.paid_amount ELSE 0 END), 0) AS total_expense
     FROM accounts a
     LEFT JOIN transactions t ON t.account_id = a.id
 `;
@@ -51,34 +51,41 @@ router.patch("/:id/opening-balance", async (req, res) => {
 router.post("/transfer", async (req, res) => {
     const { from_account_id, to_account_id, amount, notes } = req.body;
     const amt = parseFloat(amount);
-    if (!from_account_id || !to_account_id) return res.status(400).json({ error: "from_account_id and to_account_id required" });
-    if (isNaN(amt) || amt <= 0)             return res.status(400).json({ error: "amount must be positive" });
-    if (from_account_id === to_account_id)  return res.status(400).json({ error: "Cannot transfer to same account" });
+    if (!from_account_id || !to_account_id)                return res.status(400).json({ error: "from_account_id and to_account_id required" });
+    if (isNaN(amt) || amt <= 0)                            return res.status(400).json({ error: "amount must be positive" });
+    if (String(from_account_id) === String(to_account_id)) return res.status(400).json({ error: "Cannot transfer to same account" });
+
+    // Single checked-out connection so BEGIN/INSERT/INSERT/COMMIT run on one backend (real atomicity).
+    const client = await pool.connect();
     try {
         const [fromRes, toRes] = await Promise.all([
-            pool.query("SELECT name FROM accounts WHERE id=$1", [from_account_id]),
-            pool.query("SELECT name FROM accounts WHERE id=$1", [to_account_id])
+            client.query("SELECT name FROM accounts WHERE id=$1", [from_account_id]),
+            client.query("SELECT name FROM accounts WHERE id=$1", [to_account_id])
         ]);
         if (!fromRes.rows.length || !toRes.rows.length) return res.status(404).json({ error: "Account not found" });
         const fromName = fromRes.rows[0].name;
         const toName   = toRes.rows[0].name;
         const txNote   = notes?.trim() || `Transfer: ${fromName} → ${toName}`;
 
-        await pool.query("BEGIN");
-        await pool.query(
-            `INSERT INTO transactions (transaction_type, account_id, paid_amount, notes) VALUES ('PAYMENT_OUT', $1, $2, $3)`,
+        await client.query("BEGIN");
+        await client.query(
+            `INSERT INTO transactions (transaction_type, account_id, paid_amount, notes, created_at)
+             VALUES ('PAYMENT_OUT', $1, $2, $3, NOW() AT TIME ZONE 'Asia/Kolkata')`,
             [from_account_id, amt, txNote]
         );
-        await pool.query(
-            `INSERT INTO transactions (transaction_type, account_id, paid_amount, notes) VALUES ('PAYMENT_IN', $1, $2, $3)`,
+        await client.query(
+            `INSERT INTO transactions (transaction_type, account_id, paid_amount, notes, created_at)
+             VALUES ('PAYMENT_IN', $1, $2, $3, NOW() AT TIME ZONE 'Asia/Kolkata')`,
             [to_account_id, amt, txNote]
         );
-        await pool.query("COMMIT");
+        await client.query("COMMIT");
         res.json({ success: true });
     } catch (err) {
-        await pool.query("ROLLBACK");
+        await client.query("ROLLBACK").catch(() => {});
         console.log(err.message);
         res.status(500).send("Server Error");
+    } finally {
+        client.release();
     }
 });
 
