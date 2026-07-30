@@ -4,18 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock – OpTrack</title>
+    <script>(function(){if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        .stock-card { border-radius: 14px; padding: 16px 18px; border: 1px solid #e8e0d8; background: #fff; }
+        .stock-card { border-radius: 14px; padding: 16px 18px; border: 1px solid var(--border); background: var(--surface); }
         .stock-card-icon { width: 36px; height: 36px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
-        .stock-stat-label { font-size: 11px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
-        .stock-stat-val { font-size: 18px; font-weight: 700; color: #222; line-height: 1.2; }
-        .drip-type-bar { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f0ebe4; }
-        .drip-type-chip { flex: 1; background: #f8f5f2; border-radius: 10px; padding: 8px 10px; text-align: center; }
+        .stock-stat-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+        .stock-stat-val { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1.2; }
+        .drip-type-bar { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-soft); }
+        .drip-type-chip { flex: 1; background: var(--surface-alt); border-radius: 10px; padding: 8px 10px; text-align: center; }
         .drip-type-chip .dt-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
-        .drip-type-chip .dt-val { font-size: 13px; font-weight: 700; color: #333; }
+        .drip-type-chip .dt-val { font-size: 13px; font-weight: 700; color: var(--text); }
         .entry-chip { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
         .chip-prod { background: #d1f5d3; color: #1a7c2a; }
         .chip-cons { background: #fde8e8; color: #c0392b; }
@@ -31,6 +32,9 @@
             <small class="text-muted" id="userLabel"></small>
             <button class="btn btn-sm btn-outline-danger" onclick="confirmReset()" title="Reset Stock">
                 <i class="bi bi-arrow-counterclockwise"></i>
+            </button>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <i class="bi bi-moon-fill"></i><i class="bi bi-sun-fill"></i>
             </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="logout()">
                 <i class="bi bi-box-arrow-right"></i>
@@ -298,6 +302,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/theme.js"></script>
 <script>
 const token = localStorage.getItem("token");
 if (!token) location.href = "/login.html";
