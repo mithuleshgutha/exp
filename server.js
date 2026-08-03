@@ -35,10 +35,16 @@ app.use("/api/export",       authMiddleware, exportRoutes);
 // Redirect root to login
 app.get("/", (_req, res) => res.redirect("/login.html"));
 
-const PORT = process.env.PORT || 5000;
-
-initDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+// Only listen when run directly (`node server.js` / `npm start`).
+// When required by netlify/functions/api.js, the app is wrapped by
+// serverless-http instead — no persistent process, no app.listen.
+if (require.main === module) {
+    const PORT = process.env.PORT || 5000;
+    initDB().then(() => {
+        app.listen(PORT, () => {
+            console.log(`Server running on http://localhost:${PORT}`);
+        });
     });
-});
+}
+
+module.exports = app;

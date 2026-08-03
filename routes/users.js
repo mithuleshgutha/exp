@@ -1,7 +1,7 @@
 const express = require("express");
 const router  = express.Router();
 const pool    = require("../db/db");
-const bcrypt  = require("bcrypt");
+const bcrypt  = require("bcryptjs");
 
 function adminOnly(req, res, next) {
     if (req.user?.role !== "admin") return res.status(403).json({ error: "Admin only" });
