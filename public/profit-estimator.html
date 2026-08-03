@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profit Estimator – OpTrack</title>
+    <script>(function(){if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');})();</script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .est-card {
+            background: var(--surface);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+        .est-card h6 { color: var(--primary); font-weight: 700; margin-bottom: 12px; }
+        .res-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-soft);
+            font-size: 14px;
+        }
+        .res-row:last-child { border-bottom: none; }
+        .res-row .rk { color: var(--text-muted); }
+        .res-row .rv { font-weight: 700; }
+        .res-row.total { font-size: 16px; padding-top: 12px; }
+        .res-row.profit { font-size: 20px; font-weight: 800; padding-top: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container" style="max-width:620px">
+
+    <div class="page-header">
+        <div class="d-flex align-items-center gap-2">
+            <a href="#" id="backBtn" class="btn btn-sm" style="background:#f0ebe6;color:#8b5e3c">
+                <i class="bi bi-arrow-left"></i>
+            </a>
+            <h4 class="mb-0"><i class="bi bi-calculator-fill me-2" style="color:#8b5e3c"></i>Profit Estimator</h4>
+        </div>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+            <i class="bi bi-moon-fill"></i><i class="bi bi-sun-fill"></i>
+        </button>
+    </div>
+
+    <!-- Type -->
+    <div class="est-card">
+        <h6><i class="bi bi-droplet-fill me-1"></i>Type</h6>
+        <div class="cat-group">
+            <button type="button" class="cat-btn active" data-type="inline" onclick="setType('inline')">Inline</button>
+            <button type="button" class="cat-btn" data-type="online" onclick="setType('online')">Online</button>
+        </div>
+    </div>
+
+    <!-- Production -->
+    <div class="est-card">
+        <h6><i class="bi bi-gear-fill me-1"></i>Production</h6>
+        <div class="row g-2 mb-2">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Quantity (pcs)</label>
+                <input type="number" id="qty" class="form-control" placeholder="0" min="0" oninput="calc()">
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Each Meters</label>
+                <input type="number" id="eachMeters" class="form-control" placeholder="0.00" min="0" oninput="calc()">
+            </div>
+        </div>
+        <div class="row g-2">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Each Weight (kg)</label>
+                <input type="number" id="eachWeight" class="form-control" placeholder="0.00" min="0" oninput="calc()">
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Price Sold (₹/kg)</label>
+                <input type="number" id="priceSold" class="form-control" placeholder="0.00" min="0" oninput="calc()">
+            </div>
+        </div>
+    </div>
+
+    <!-- Costs -->
+    <div class="est-card">
+        <h6><i class="bi bi-cash-stack me-1"></i>Costs</h6>
+        <div class="row g-2 mb-2">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Dhana Cost (₹/kg)</label>
+                <input type="number" id="dhanaCost" class="form-control" value="70" min="0" oninput="calc()">
+            </div>
+            <div class="col" id="bagCostCol">
+                <label class="form-label small fw-semibold mb-1">Dipper Bag Cost (₹/bag)</label>
+                <input type="number" id="bagCost" class="form-control" placeholder="0.00" min="0" oninput="calc()">
+            </div>
+        </div>
+        <div class="row g-2">
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Electricity (₹)</label>
+                <input type="number" id="electricity" class="form-control" value="6000" min="0" oninput="calc()">
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Workers (₹)</label>
+                <input type="number" id="workers" class="form-control" value="3000" min="0" oninput="calc()">
+            </div>
+            <div class="col">
+                <label class="form-label small fw-semibold mb-1">Transport (₹)</label>
+                <input type="number" id="transport" class="form-control" value="5000" min="0" oninput="calc()">
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="est-card">
+        <h6><i class="bi bi-bar-chart-fill me-1"></i>Breakdown</h6>
+        <div class="res-row"><span class="rk">Total Meters</span><span class="rv" id="rTotalMeters">0</span></div>
+        <div class="res-row"><span class="rk">Gross Weight (kg)</span><span class="rv" id="rGrossWeight">0</span></div>
+        <div id="dipperRows">
+            <div class="res-row"><span class="rk">Total Dippers</span><span class="rv" id="rDipperCount">0</span></div>
+            <div class="res-row"><span class="rk">Dipper Bags (10000 = 12kg)</span><span class="rv" id="rDipperBags">0</span></div>
+            <div class="res-row"><span class="rk">Dipper Weight (kg)</span><span class="rv" id="rDipperWeight">0</span></div>
+            <div class="res-row"><span class="rk">Dipper Cost</span><span class="rv" id="rDipperCost">₹0</span></div>
+        </div>
+        <div class="res-row"><span class="rk">Dhana Weight (kg)</span><span class="rv" id="rDhanaWeight">0</span></div>
+        <div class="res-row"><span class="rk">Dhana Cost</span><span class="rv" id="rDhanaCost">₹0</span></div>
+        <div class="res-row total"><span class="rk">Material Cost</span><span class="rv" id="rMaterialCost">₹0</span></div>
+        <div class="res-row"><span class="rk">Overheads (Elec + Workers + Transport)</span><span class="rv" id="rOverhead">₹0</span></div>
+        <div class="res-row total"><span class="rk">Total Cost</span><span class="rv" id="rTotalCost">₹0</span></div>
+        <div class="res-row total"><span class="rk">Revenue</span><span class="rv" id="rRevenue">₹0</span></div>
+        <div class="res-row profit">
+            <span class="rk">Net Profit</span>
+            <span class="rv" id="rProfit">₹0</span>
+        </div>
+        <div class="text-end text-muted small mt-1" id="rMargin"></div>
+    </div>
+
+</div>
+
+<script>
+/* ── Theme (works pre-login too) ── */
+function toggleTheme() {
+    const cur  = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    const next = cur === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+}
+
+/* ── Back destination: dashboard if logged in, else login ── */
+document.getElementById("backBtn").href = localStorage.getItem("token") ? "/dashboard.html" : "/login.html";
+
+/* ── Type toggle ── */
+let _type = "inline";
+function setType(t) {
+    _type = t;
+    document.querySelectorAll("[data-type]").forEach(b => b.classList.toggle("active", b.dataset.type === t));
+    document.getElementById("dipperRows").style.display = t === "inline" ? "" : "none";
+    document.getElementById("bagCostCol").style.display  = t === "inline" ? "" : "none";
+    calc();
+}
+
+const num = id => parseFloat(document.getElementById(id).value) || 0;
+const fmt = n => "₹" + n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const fmtN = n => n.toLocaleString("en-IN", { maximumFractionDigits: 2 });
+
+function calc() {
+    const qty      = num("qty");
+    const eachM    = num("eachMeters");
+    const eachW    = num("eachWeight");
+    const priceKg  = num("priceSold");
+    const dhanaRate = num("dhanaCost") || 70;
+    const bagCost  = num("bagCost");
+    const elec     = num("electricity");
+    const workers  = num("workers");
+    const transport = num("transport");
+
+    const totalMeters = qty * eachM;
+    const grossWeight = qty * eachW;
+
+    let dipperCount = 0, dipperBags = 0, dipperWeight = 0, dipperCost = 0;
+    let dhanaWeight = grossWeight;
+
+    if (_type === "inline") {
+        dipperCount  = totalMeters * 2.5;
+        dipperBags   = dipperCount / 10000;
+        dipperWeight = dipperBags * 12;
+        dhanaWeight  = grossWeight - dipperWeight;
+        dipperCost   = dipperBags * bagCost;
+    }
+
+    const dhanaCost    = dhanaWeight * dhanaRate;
+    const materialCost = dhanaCost + dipperCost;
+    const overhead     = elec + workers + transport;
+    const totalCost    = materialCost + overhead;
+    const revenue       = grossWeight * priceKg;
+    const profit        = revenue - totalCost;
+    const margin        = revenue ? (profit / revenue * 100) : 0;
+
+    document.getElementById("rTotalMeters").textContent = fmtN(totalMeters);
+    document.getElementById("rGrossWeight").textContent = fmtN(grossWeight);
+    document.getElementById("rDipperCount").textContent = fmtN(dipperCount);
+    document.getElementById("rDipperBags").textContent  = fmtN(dipperBags);
+    document.getElementById("rDipperWeight").textContent = fmtN(dipperWeight);
+    document.getElementById("rDipperCost").textContent  = fmt(dipperCost);
+    document.getElementById("rDhanaWeight").textContent = fmtN(dhanaWeight);
+    document.getElementById("rDhanaCost").textContent   = fmt(dhanaCost);
+    document.getElementById("rMaterialCost").textContent = fmt(materialCost);
+    document.getElementById("rOverhead").textContent    = fmt(overhead);
+    document.getElementById("rTotalCost").textContent   = fmt(totalCost);
+    document.getElementById("rRevenue").textContent     = fmt(revenue);
+
+    const profitEl = document.getElementById("rProfit");
+    profitEl.textContent = (profit < 0 ? "-" : "") + fmt(Math.abs(profit));
+    profitEl.style.color = profit >= 0 ? "#1a7c2a" : "#c0392b";
+    document.getElementById("rMargin").textContent = revenue ? `Margin: ${margin.toFixed(1)}%` : "";
+}
+
+calc();
+</script>
+</body>
+</html>

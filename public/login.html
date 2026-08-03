@@ -57,9 +57,14 @@
 </head>
 <body>
     <div class="login-card">
-        <button class="theme-toggle login-theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-            <i class="bi bi-moon-fill"></i><i class="bi bi-sun-fill"></i>
-        </button>
+        <div class="d-flex gap-2 login-theme-toggle">
+            <a href="/profit-estimator.html" class="theme-toggle" title="Profit Estimator">
+                <i class="bi bi-calculator-fill"></i>
+            </a>
+            <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
+                <i class="bi bi-moon-fill"></i><i class="bi bi-sun-fill"></i>
+            </button>
+        </div>
         <div class="brand-icon"><i class="bi bi-boxes"></i></div>
         <h4 class="text-center fw-bold mb-1">OpTrack</h4>
         <p class="text-center text-muted mb-4" style="font-size:13px">Industrial Operations Tracker</p>
