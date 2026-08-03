@@ -199,15 +199,21 @@
         bootstrap.Modal.getOrCreateInstance(document.getElementById("transferModal")).show();
     }
 
+    let _transferring = false;
     async function doTransfer() {
+        if (_transferring) return;
         const from   = parseInt(document.getElementById("trFrom").value);
         const to     = parseInt(document.getElementById("trTo").value);
         const amount = parseFloat(document.getElementById("trAmount").value);
         const notes  = document.getElementById("trNotes").value.trim();
         const errEl  = document.getElementById("trErr");
+        const btn    = document.getElementById("trSubmitBtn");
         errEl.textContent = "";
         if (from === to)      { errEl.textContent = "From and To must be different."; return; }
         if (!amount || amount <= 0) { errEl.textContent = "Enter a valid amount."; return; }
+        _transferring = true;
+        btn.disabled = true;
+        btn.textContent = "Transferring…";
         try {
             const r = await fetch("/api/accounts/transfer", {
                 method: "POST", headers: authH(),
@@ -218,6 +224,11 @@
             bootstrap.Modal.getInstance(document.getElementById("transferModal")).hide();
             load();
         } catch { errEl.textContent = "Error. Try again."; }
+        finally {
+            _transferring = false;
+            btn.disabled = false;
+            btn.textContent = "Transfer";
+        }
     }
 
     let _obAccountId = null;
@@ -281,7 +292,7 @@
             <div class="text-danger small mb-2" id="trErr"></div>
             <div class="d-flex gap-2">
                 <button class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancel</button>
-                <button class="btn btn-primary flex-grow-1" onclick="doTransfer()">Transfer</button>
+                <button class="btn btn-primary flex-grow-1" id="trSubmitBtn" onclick="doTransfer()">Transfer</button>
             </div>
         </div>
     </div>
