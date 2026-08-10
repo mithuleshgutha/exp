@@ -168,6 +168,7 @@
                         <button type="button" class="cat-btn"        data-cat="dhana"   onclick="onCatChange('dhana')">Dhana</button>
                         <button type="button" class="cat-btn"        data-cat="dipper"  onclick="onCatChange('dipper')">Dipper</button>
                         <button type="button" class="cat-btn"        data-cat="scrap"   onclick="onCatChange('scrap')">Scrap</button>
+                        <button type="button" class="cat-btn"        data-cat="factory" onclick="onCatChange('factory')">Factory</button>
                         <button type="button" class="cat-btn"        data-cat="payment" onclick="onCatChange('payment')">Payment</button>
                         <button type="button" class="cat-btn"        data-cat="expense" onclick="onCatChange('expense')">Expense</button>
                     </div>
@@ -439,6 +440,7 @@ const CAT_HINTS = {
     dhana:   "Purchase & Sale — stock tracked (Bags)",
     dipper:  "Purchase & Sale — Dipper product",
     scrap:   "Purchase & Sale — no stock tracking",
+    factory: "Walk-in factory sale — paid in full, no customer needed. Add details in Notes.",
     payment: "Record a payment received or made",
     expense: "Business expense — fuel, wages, electricity, etc."
 };
@@ -451,14 +453,15 @@ function onCatChange(cat) {
 
     const isPayment = cat === "payment";
     const isExpense = cat === "expense";
+    const isFactory = cat === "factory";
 
-    document.getElementById("custRow").style.display      = isExpense ? "none" : "";
+    document.getElementById("custRow").style.display      = (isExpense || isFactory) ? "none" : "";
     document.getElementById("saleTypeRow").style.display  = (cat === "drip" || cat === "dhana" || cat === "scrap" || cat === "dipper") ? "" : "none";
     document.getElementById("payTypeRow").style.display   = isPayment ? "" : "none";
-    document.getElementById("accountRow").style.display    = (isPayment || isExpense || cat === "drip" || cat === "dhana" || cat === "dipper" || cat === "scrap") ? "" : "none";
+    document.getElementById("accountRow").style.display    = (isPayment || isExpense || isFactory || cat === "drip" || cat === "dhana" || cat === "dipper" || cat === "scrap") ? "" : "none";
     document.getElementById("expenseCatRow").style.display = isExpense ? "" : "none";
-    document.getElementById("stockRow").style.display     = (isPayment || isExpense) ? "none" : "";
-    document.getElementById("rateRow").style.display      = (isPayment || isExpense) ? "none" : "";
+    document.getElementById("stockRow").style.display     = (isPayment || isExpense || isFactory) ? "none" : "";
+    document.getElementById("rateRow").style.display      = (isPayment || isExpense || isFactory) ? "none" : "";
     document.getElementById("totalChip").style.display    = "none";
 
     document.getElementById("qtyCol").style.display        = (cat === "drip" || cat === "scrap" || cat === "dipper") ? "" : "none";
@@ -467,12 +470,13 @@ function onCatChange(cat) {
     document.getElementById("dripTypeRow").style.display   = cat === "drip" ? "" : "none";
     document.getElementById("bagsCol").style.display       = cat === "dhana" ? "" : "none";
     document.getElementById("calcMethodRow").style.display = cat === "drip" ? "" : "none";
-    document.getElementById("totalInputRow").style.display = (isPayment || isExpense) ? "none" : "";
+    document.getElementById("totalInputRow").style.display = (isPayment || isExpense || isFactory) ? "none" : "";
 
     document.getElementById("rateLabel").textContent = cat === "dhana" ? "Rate (₹/bag)" : "Rate (₹/unit)";
 
     const payType = document.getElementById("payType").value;
     document.getElementById("paidLabel").textContent = isExpense ? "Expense Amount (₹)"
+        : isFactory ? "Sale Amount (₹)"
         : isPayment
             ? (payType === "PAYMENT_IN" ? "Amount Received (₹)" : "Amount Paid to Customer (₹)")
             : "Amount Paid (₹)";
@@ -488,7 +492,7 @@ function onPayTypeChange() {
 
 function calcTotal() {
     const cat = getCategory();
-    if (cat === "payment" || cat === "expense") { document.getElementById("totalChip").style.display = "none"; return; }
+    if (cat === "payment" || cat === "expense" || cat === "factory") { document.getElementById("totalChip").style.display = "none"; return; }
 
     if (cat === "drip") {
         const qty    = parseFloat(document.getElementById("qty").value)    || 0;
@@ -556,6 +560,8 @@ function openEdit(id) {
         cat = "payment";
     } else if (t.transaction_type === "EXPENSE") {
         cat = "expense";
+    } else if (t.transaction_type === "SALE" && !t.customer_id) {
+        cat = "factory";
     } else {
         cat = t.item_type || (t.product ? t.product.toLowerCase() : "drip");
     }
@@ -607,23 +613,25 @@ function buildBody() {
     const cat = getCategory();
     const isPayment = cat === "payment";
     const isExpense = cat === "expense";
+    const isFactory = cat === "factory";
     let txType;
     if (cat === "payment")      txType = document.getElementById("payType").value;
     else if (cat === "expense") txType = "EXPENSE";
+    else if (cat === "factory") txType = "SALE";
     else                        txType = document.getElementById("salePurchase").value;
 
     return {
-        customer_name:    isExpense ? "" : document.getElementById("custInput").value.trim(),
-        customer_id:      isExpense ? null : (document.getElementById("custId").value || null),
+        customer_name:    (isExpense || isFactory) ? "" : document.getElementById("custInput").value.trim(),
+        customer_id:      (isExpense || isFactory) ? null : (document.getElementById("custId").value || null),
         transaction_type: txType,
-        item_type:        (isPayment || isExpense) ? null : cat,
+        item_type:        (isPayment || isExpense || isFactory) ? null : cat,
         quantity:         (cat === "drip" || cat === "scrap" || cat === "dipper")
                             ? (parseFloat(document.getElementById("qty").value)  || 0) : 0,
         meters:           cat === "drip"  ? (parseFloat(document.getElementById("meters").value) || 0) : 0,
         weight:           cat === "drip"  ? (parseFloat(document.getElementById("weight").value) || 0) : 0,
         bags:             cat === "dhana" ? (parseFloat(document.getElementById("bags").value)   || 0) : 0,
-        rate:             isPayment ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
-        total:            !(isPayment || isExpense) ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
+        rate:             (isPayment || isFactory) ? 0 : (parseFloat(document.getElementById("rate").value) || 0),
+        total:            !(isPayment || isExpense || isFactory) ? (parseFloat(document.getElementById("totalInput").value) || null) : null,
         paid_amount:      parseFloat(document.getElementById("paid").value) || 0,
         account_id:       document.getElementById("accountId").value || null,
         expense_category: isExpense ? (document.getElementById("expenseCat").value || null) : null,
@@ -636,7 +644,7 @@ function buildBody() {
 /* ── Add Transaction ── */
 async function saveTx() {
     const body = buildBody();
-    if (body.transaction_type !== "EXPENSE" && !body.customer_name) { alert("Please enter a customer name."); return; }
+    if (body.transaction_type !== "EXPENSE" && getCategory() !== "factory" && !body.customer_name) { alert("Please enter a customer name."); return; }
     try {
         const r = await fetch("/api/transactions", {
             method: "POST", headers: authHeaders(), body: JSON.stringify(body)
@@ -651,7 +659,7 @@ async function saveTx() {
 /* ── Update Transaction ── */
 async function updateTx() {
     const body = buildBody();
-    if (body.transaction_type !== "EXPENSE" && !body.customer_name) { alert("Please enter a customer name."); return; }
+    if (body.transaction_type !== "EXPENSE" && getCategory() !== "factory" && !body.customer_name) { alert("Please enter a customer name."); return; }
     try {
         const r = await fetch(`/api/transactions/${editingId}`, {
             method: "PUT", headers: authHeaders(), body: JSON.stringify(body)
@@ -800,8 +808,11 @@ function renderTx(t) {
     const date      = new Date(t.created_at).toLocaleDateString("en-IN",
         { day:"2-digit", month:"short", year:"numeric" });
     const pending   = parseFloat(t.pending_amount);
-    const detail    = stockDetail(t);
-    const label     = isExpense ? (t.expense_category || t.notes || "Expense") : t.customer_name;
+    const detail       = stockDetail(t);
+    const isFactorySale = t.transaction_type === "SALE" && !t.customer_id;
+    const label     = isExpense ? (t.expense_category || t.notes || "Expense")
+        : isFactorySale ? "Factory Sale (walk-in)"
+        : t.customer_name;
     const expNote   = isExpense && t.expense_category && t.notes ? t.notes : null;
 
     return `

@@ -369,9 +369,11 @@ body {
 /* ── Category button group ── */
 .cat-group {
     display: flex;
+    flex-wrap: wrap;
     gap: 6px;
 }
 .cat-btn {
+    min-width: 74px;
     flex: 1;
     padding: 9px 4px;
     border: 1.5px solid var(--border);

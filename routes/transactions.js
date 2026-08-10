@@ -190,8 +190,10 @@ router.post("/", async (req, res) => {
                 expense_category, opening_balance } = req.body;
 
         const isExpense = transaction_type === "EXPENSE";
+        // Factory sale: walk-in buyer, paid in full on the spot — no customer to track.
+        const isFactorySale = transaction_type === "SALE" && !customer_name?.trim();
         let custId = null;
-        if (!isExpense) {
+        if (!isExpense && !isFactorySale) {
             if (!customer_name?.trim()) return res.status(400).json({ error: "Customer name required" });
             custId = await resolveCustomer(pool, customer_name, customer_id, opening_balance);
         }
@@ -205,7 +207,8 @@ router.post("/", async (req, res) => {
 
         const isPayment  = transaction_type === "PAYMENT_IN" || transaction_type === "PAYMENT_OUT";
         const billingQty = item_type === "dhana" ? bg : qty;
-        const total      = (isPayment || isExpense) ? paid
+        const total      = isFactorySale ? paid
+            : (isPayment || isExpense) ? paid
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
         const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
@@ -223,7 +226,7 @@ router.post("/", async (req, res) => {
              item_type || null, mts, wt, bg, acctId, expCat]
         );
 
-        if (!isExpense) await applyBalance(pool, transaction_type, custId, pending, paid, +1);
+        if (!isExpense && !isFactorySale) await applyBalance(pool, transaction_type, custId, pending, paid, +1);
         await applyStock(pool, item_type, transaction_type, qty, mts, wt, bg, +1);
         res.json(result.rows[0]);
     } catch (err) {
@@ -265,8 +268,9 @@ router.put("/:id", async (req, res) => {
 
         const isExpense  = transaction_type === "EXPENSE";
         const isPayment  = transaction_type === "PAYMENT_IN" || transaction_type === "PAYMENT_OUT";
+        const isFactorySale = transaction_type === "SALE" && !customer_name?.trim();
         let newCustId = null;
-        if (!isExpense) {
+        if (!isExpense && !isFactorySale) {
             newCustId = await resolveCustomer(pool, customer_name || old.customer_name, customer_id);
         }
 
@@ -278,7 +282,8 @@ router.put("/:id", async (req, res) => {
         const bg   = parseFloat(bags)        || 0;
 
         const billingQty = item_type === "dhana" ? bg : qty;
-        const total      = (isPayment || isExpense) ? paid
+        const total      = isFactorySale ? paid
+            : (isPayment || isExpense) ? paid
             : (totalOverride != null ? parseFloat(totalOverride) : billingQty * rt);
         const pending    = (isPayment || isExpense) ? 0 : total - paid;
 
@@ -301,7 +306,7 @@ router.put("/:id", async (req, res) => {
              item_type || null, mts, wt, bg, txId, acctId, expCat]
         );
 
-        if (!isExpense) await applyBalance(pool, transaction_type, newCustId, pending, paid, +1);
+        if (!isExpense && !isFactorySale) await applyBalance(pool, transaction_type, newCustId, pending, paid, +1);
         await applyStock(pool, item_type, transaction_type, qty, mts, wt, bg, +1);
 
         const updated = await pool.query(TX_WITH_EDITS + " WHERE t.id = $1", [txId]);

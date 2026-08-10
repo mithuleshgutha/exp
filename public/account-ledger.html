@@ -169,9 +169,12 @@ function renderTx(t) {
         { day:"2-digit", month:"short", year:"numeric" });
     const pending   = parseFloat(t.pending_amount);
 
+    const isFactorySale = t.transaction_type === "SALE" && !t.customer_id;
     let subtitle = "";
     if (isExpense) {
         subtitle = t.expense_category || t.notes || "Expense";
+    } else if (isFactorySale) {
+        subtitle = "Factory Sale (walk-in)";
     } else if (t.customer_name) {
         subtitle = `<a href="/ledger.html?id=${t.customer_id}" class="text-decoration-none" style="color:#8b5e3c">${t.customer_name}</a>`;
     }
