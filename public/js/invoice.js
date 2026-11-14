@@ -10,6 +10,8 @@ const SELLERS = {
         itemLabel: "DESCRIPTION OF GOODS",
         defaultItem: "16MM INLINE DRIP",
         defaultRate: "2.8",
+        defaultState: "ANDHRA PRADESH",
+        defaultCode: "37",
         taxed: false,
     },
     irri: {
@@ -20,6 +22,8 @@ const SELLERS = {
         itemLabel: "GOODS",
         defaultItem: "DRIP IRRIGATION",
         defaultRate: "",
+        defaultState: "TELENGANA",
+        defaultCode: "36",
         taxed: true,
     },
 };
@@ -378,6 +382,11 @@ function setType(t) {
     document.querySelectorAll(".i-desc").forEach(i => { if (i.value === prev) i.value = SELLERS[t].defaultItem; });
     const prevRate = SELLERS[t === "poly" ? "irri" : "poly"].defaultRate;
     document.querySelectorAll(".i-rate").forEach(i => { if (i.value === prevRate) i.value = SELLERS[t].defaultRate; });
+    const other = SELLERS[t === "poly" ? "irri" : "poly"];
+    [["bState", "defaultState"], ["bCode", "defaultCode"]].forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (el.value === other[key]) el.value = SELLERS[t][key];
+    });
     calc();
 }
 
@@ -398,7 +407,7 @@ function generate() {
     if (!inv.items.length || !inv.items.some(i => Number(i.qty) > 0 && Number(i.rate) > 0))
         return alert("Add at least one item with quantity and rate.");
     const doc = buildPdf(inv);
-    const fname = `${inv.type === "poly" ? "Bill-of-Supply" : "Invoice"}-${(inv.invNo || "draft").replace(/[^\w-]/g, "_")}.pdf`;
+    const fname = `${inv.type === "poly" ? "POLY" : "IRRI"}-${(inv.invNo || "draft").replace(/[^\w-]/g, "_")}.pdf`;
     // iOS Safari ignores download names: open the PDF so it can be shared / saved from the viewer
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     if (ios) window.open(doc.output("bloburl"), "_blank");
