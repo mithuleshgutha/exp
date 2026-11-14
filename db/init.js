@@ -51,17 +51,6 @@ async function initDB() {
             ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP
         `);
 
-        // Edit history table
-        await pool.query(`
-            CREATE TABLE IF NOT EXISTS transaction_edits (
-                id SERIAL PRIMARY KEY,
-                transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE,
-                old_snapshot JSONB NOT NULL,
-                edited_by INTEGER REFERENCES users(id),
-                edited_at TIMESTAMP DEFAULT NOW()
-            )
-        `);
-
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id         SERIAL PRIMARY KEY,
@@ -70,6 +59,17 @@ async function initDB() {
                 password   VARCHAR(255) NOT NULL,
                 role       VARCHAR(50)  DEFAULT 'user',
                 created_at TIMESTAMP    DEFAULT NOW()
+            )
+        `);
+
+        // Edit history table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS transaction_edits (
+                id SERIAL PRIMARY KEY,
+                transaction_id INTEGER REFERENCES transactions(id) ON DELETE CASCADE,
+                old_snapshot JSONB NOT NULL,
+                edited_by INTEGER REFERENCES users(id),
+                edited_at TIMESTAMP DEFAULT NOW()
             )
         `);
 
@@ -124,11 +124,6 @@ async function initDB() {
         await pool.query(`INSERT INTO stock (item_type) VALUES ('dhana')  ON CONFLICT (item_type) DO NOTHING`);
         await pool.query(`INSERT INTO stock (item_type) VALUES ('dipper') ON CONFLICT (item_type) DO NOTHING`);
 
-        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS entry_type VARCHAR(20) DEFAULT 'production'`);
-        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_type  VARCHAR(20)`);
-        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_spec  VARCHAR(100)`);
-        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS coating    BOOLEAN DEFAULT FALSE`);
-
         // Production ledger
         await pool.query(`
             CREATE TABLE IF NOT EXISTS production (
@@ -145,6 +140,10 @@ async function initDB() {
                 created_at TIMESTAMP DEFAULT NOW()
             )
         `);
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS entry_type VARCHAR(20) DEFAULT 'production'`);
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_type  VARCHAR(20)`);
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS drip_spec  VARCHAR(100)`);
+        await pool.query(`ALTER TABLE production ADD COLUMN IF NOT EXISTS coating    BOOLEAN DEFAULT FALSE`);
 
         console.log("DB initialised successfully");
     } catch (err) {
